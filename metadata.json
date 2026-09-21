@@ -1,0 +1,6 @@
+{
+  "name": "AgriGrade",
+  "description": "Multi-agent dual-mode AI system for pre-harvest agricultural decision support and post-harvest dark store quality gating.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
