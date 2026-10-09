@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCircle2, AlertOctagon, Clock, Truck, ShieldCheck, ArrowRight, FileText, Download, Check, MessageSquare } from 'lucide-react';
+import { CheckCircle2, AlertOctagon, Clock, Truck, ShieldCheck, ArrowRight, FileText, Download, Check, MessageSquare, Smartphone } from 'lucide-react';
 import { generateInspectionPdfReport } from '../utils/pdfReportGenerator';
 import type { AgriGradeReport, USDAMaturityStage } from '../types';
 
@@ -8,6 +8,7 @@ interface FieldHarvestDecisionProps {
   transitHours: number;
   transitKm: number;
   onOpenChat?: (prompt?: string) => void;
+  onOpenMobileFieldModal?: () => void;
 }
 
 export const FieldHarvestDecision: React.FC<FieldHarvestDecisionProps> = ({
@@ -15,6 +16,7 @@ export const FieldHarvestDecision: React.FC<FieldHarvestDecisionProps> = ({
   transitHours,
   transitKm,
   onOpenChat,
+  onOpenMobileFieldModal,
 }) => {
   const [downloadedPass, setDownloadedPass] = useState(false);
 
@@ -212,6 +214,17 @@ export const FieldHarvestDecision: React.FC<FieldHarvestDecisionProps> = ({
           Batch: <span className="font-mono text-stone-200">{report.id}</span> • Certified by AgriGrade Swarm
         </div>
         <div className="flex items-center gap-2">
+          {onOpenMobileFieldModal && (
+            <button
+              onClick={onOpenMobileFieldModal}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-lime-950 hover:bg-lime-900 border border-lime-700/80 text-lime-200 flex items-center gap-1.5 transition-colors shadow-sm"
+              title="Open Mobile Field Scout & Weather Harvesting Advisory"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-lime-400" />
+              <span>Mobile Scout & Weather</span>
+            </button>
+          )}
+
           {onOpenChat && (
             <button
               onClick={() =>

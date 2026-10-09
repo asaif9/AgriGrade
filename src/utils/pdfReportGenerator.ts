@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import type { AgriGradeReport, AgentTraceStep } from '../types';
+import type { AgriGradeReport, AgentTraceStep, ColdChainTelemetry } from '../types';
 
 export interface GeneratePdfOptions {
   report: AgriGradeReport;
@@ -9,6 +9,7 @@ export interface GeneratePdfOptions {
   ambientTemp?: number;
   transitHours?: number;
   transitKm?: number;
+  coldChainTelemetry?: ColdChainTelemetry;
 }
 
 /**
@@ -25,7 +26,10 @@ export async function generateInspectionPdfReport(options: GeneratePdfOptions): 
     ambientTemp = 28,
     transitHours = 10,
     transitKm = 120,
+    coldChainTelemetry,
   } = options;
+
+  const cc = coldChainTelemetry || report.cold_chain_telemetry;
 
   const doc = new jsPDF({
     unit: 'pt',
@@ -285,17 +289,24 @@ export async function generateInspectionPdfReport(options: GeneratePdfOptions): 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(82, 82, 91);
-  doc.text(`• Ambient Shelf-Life (${ambientTemp}°C): ${report.ambient_shelf_life_days} Marketable Days`, rightBoxX + 12, curY + 40);
-  doc.text(`• Cold-Chain Shelf-Life (8-12°C): ${report.cold_storage_shelf_life_days} Days`, rightBoxX + 12, curY + 56);
-  doc.text(`• Cold Gain: +${report.cold_storage_shelf_life_days - report.ambient_shelf_life_days} days via active refrigeration`, rightBoxX + 12, curY + 72);
-  doc.text(`• Q10 Respiration Factor: ${report.kinetic_parameters?.q10_respiration_factor || 2.2}`, rightBoxX + 12, curY + 88);
-  doc.text(`• Base Commodity Longevity: ${report.kinetic_parameters?.base_shelf_life_days || 14} days`, rightBoxX + 12, curY + 104);
+  doc.text(`• Ambient Shelf-Life (${ambientTemp}°C): ${report.ambient_shelf_life_days} Marketable Days`, rightBoxX + 12, curY + 38);
+  doc.text(`• Cold-Chain Shelf-Life (8-12°C): ${report.cold_storage_shelf_life_days} Days`, rightBoxX + 12, curY + 52);
+  if (cc) {
+    doc.text(`• Cold Chain Score: ${cc.coldChainScore}/100 (Target ${cc.targetTempCelsius}°C vs Avg ${cc.actualAvgTempCelsius}°C)`, rightBoxX + 12, curY + 66);
+    doc.text(`• Thermal Excursion: ${cc.timeAboveThresholdFormatted} > ${cc.thresholdTempCelsius}°C (Peak ${cc.maxTempCelsius}°C)`, rightBoxX + 12, curY + 80);
+    doc.text(`• Shelf-Life Loss: ${cc.shelfLifeLossDays} days (Exposure: ${cc.thermalExposureScore} °C·h)`, rightBoxX + 12, curY + 94);
+    doc.text(`• Logger: ${cc.bluetoothDataLoggers.deviceModel} • Reefer: ${cc.reeferTelemetry.reeferUnitModel}`, rightBoxX + 12, curY + 108);
+  } else {
+    doc.text(`• Cold Gain: +${report.cold_storage_shelf_life_days - report.ambient_shelf_life_days} days via active refrigeration`, rightBoxX + 12, curY + 70);
+    doc.text(`• Q10 Respiration Factor: ${report.kinetic_parameters?.q10_respiration_factor || 2.2}`, rightBoxX + 12, curY + 88);
+    doc.text(`• Base Commodity Longevity: ${report.kinetic_parameters?.base_shelf_life_days || 14} days`, rightBoxX + 12, curY + 104);
+  }
 
   const gainPct = Math.round(((report.cold_storage_shelf_life_days - report.ambient_shelf_life_days) / Math.max(1, report.ambient_shelf_life_days)) * 100);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.setTextColor(14, 165, 233); // sky-500
-  doc.text(`Storage Efficiency: +${gainPct}% shelf-life preservation via Reefer`, rightBoxX + 12, curY + 124);
+  doc.text(`Storage Efficiency: +${gainPct}% shelf-life preservation via Reefer`, rightBoxX + 12, curY + 126);
 
   curY += 152;
 

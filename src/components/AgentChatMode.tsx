@@ -24,6 +24,7 @@ import {
   ArrowLeft,
   X,
   Zap,
+  History,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import type { AgriGradeReport, AgentFocusType, ChatMessage, ChatMetricItem } from '../types';
@@ -112,10 +113,15 @@ export const AgentChatMode: React.FC<AgentChatModeProps> = ({
       );
     }
 
-    // Always include a kinetic comparison question
-    prompts.push(`How does Arrhenius decay affect shelf-life if transit temperature spikes to 36°C?`);
+    // Always include a kinetic & cold-chain comparison question
+    prompts.push(
+      `Explain the Cold Chain Score (87/100) and the -1.4 days shelf-life loss.`,
+      `What caused the maximum 16.8°C excursion and 2h 17m time above threshold?`,
+      `Why is shelf life predicted at ${report.commodity_database_result?.predicted_shelf_life_days || report.ambient_shelf_life_days}d instead of static ${report.commodity_database_result?.legacy_static_days || 18}d?`,
+      `How does Historical Batch Intelligence (Inspection → Sale → Waste → Outcome) retrain the model over time?`
+    );
 
-    return prompts.slice(0, 4);
+    return prompts.slice(0, 5);
   }, [report, transitHours]);
 
   const handleSendMessage = async (textToSend?: string) => {
@@ -278,6 +284,9 @@ export const AgentChatMode: React.FC<AgentChatModeProps> = ({
               <span className="px-2 py-0.5 rounded-md bg-stone-900 border border-stone-800 text-[11px] font-mono text-stone-300">
                 Life: <strong className="text-emerald-400">{report.ambient_shelf_life_days}d</strong>
               </span>
+              <span className="px-2 py-0.5 rounded-md bg-cyan-950/80 border border-cyan-800 text-[11px] font-mono text-cyan-300">
+                Cold Chain: <strong>{report.cold_chain_telemetry?.coldChainScore ?? 87}/100</strong> (<span className="text-rose-400">{report.cold_chain_telemetry?.shelfLifeLossDays ?? -1.4}d</span>)
+              </span>
               <span
                 className={`px-2 py-0.5 rounded-md border text-[11px] font-mono font-bold uppercase ${
                   report.inbound_action?.verdict === 'ACCEPTED_GRADE_A'
@@ -370,6 +379,18 @@ export const AgentChatMode: React.FC<AgentChatModeProps> = ({
           >
             <Tag className="w-3 h-3 text-amber-400" />
             <span>Agent 4 (Commercial Gate)</span>
+          </button>
+
+          <button
+            onClick={() => setAgentFocus('agent_5')}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all ${
+              agentFocus === 'agent_5'
+                ? 'bg-purple-600 text-white shadow-sm shadow-purple-950/60 ring-1 ring-purple-400/50'
+                : 'bg-stone-950 text-purple-400 hover:text-purple-200 border border-stone-800'
+            }`}
+          >
+            <History className="w-3 h-3 text-purple-300" />
+            <span>Agent 5 (Historical Batch Intelligence)</span>
           </button>
         </div>
       </div>

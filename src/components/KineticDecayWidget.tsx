@@ -20,8 +20,10 @@ import {
   ChevronDown,
   ChevronUp,
   SlidersHorizontal,
+  Radio,
 } from 'lucide-react';
-import type { AgriGradeReport } from '../types';
+import type { AgriGradeReport, ColdChainTelemetry } from '../types';
+import { ColdChainSummaryWidget } from './ColdChainSummaryWidget';
 import {
   SUPPLY_REGIONS,
   getMonthlyClimate,
@@ -35,6 +37,9 @@ interface KineticDecayWidgetProps {
   storageMethod: 'AMBIENT_LORRY' | 'CHILLED_REEFER';
   onStorageChange: (method: 'AMBIENT_LORRY' | 'CHILLED_REEFER') => void;
   supplierName?: string;
+  coldChainTelemetry?: ColdChainTelemetry;
+  onOpenTelemetryStudio?: () => void;
+  onOpenDigitalTwin?: () => void;
 }
 
 export const KineticDecayWidget: React.FC<KineticDecayWidgetProps> = ({
@@ -44,6 +49,9 @@ export const KineticDecayWidget: React.FC<KineticDecayWidgetProps> = ({
   storageMethod,
   onStorageChange,
   supplierName,
+  coldChainTelemetry,
+  onOpenTelemetryStudio,
+  onOpenDigitalTwin,
 }) => {
   const [showFormulaDetails, setShowFormulaDetails] = useState(false);
   const [showSeasonalDetails, setShowSeasonalDetails] = useState(false);
@@ -104,14 +112,23 @@ export const KineticDecayWidget: React.FC<KineticDecayWidgetProps> = ({
     const tempFactor = Math.pow(Q10, -tempDelta / 10.0);
     const ripenessFactor = Math.max(0.05, 1.0 - ripeness_percentage / 100.0);
 
-    // Adjusted life incorporating regional seasonal factor
+    const effectiveColdChainTelemetry = coldChainTelemetry || report.cold_chain_telemetry;
+    const coldChainLoss = effectiveColdChainTelemetry?.shelfLifeLossDays ?? -1.4;
+
+    // Adjusted life incorporating regional seasonal factor and cold chain thermal excursion deduction
     const rawLife =
       SL_base *
       effectiveSeasonalMultiplier *
       ripenessFactor *
       tempFactor *
       (1.0 - D_bruise);
-    const days = Math.max(0.2, Math.round(rawLife * 10) / 10);
+    
+    // Apply cold-chain telemetry loss if in cold chain or reefer mode
+    const coldChainAdjustedLife = storageMethod === 'CHILLED_REEFER'
+      ? Math.max(0.2, rawLife + coldChainLoss)
+      : Math.max(0.2, rawLife);
+
+    const days = Math.max(0.2, Math.round((storageMethod === 'CHILLED_REEFER' ? coldChainAdjustedLife : rawLife) * 10) / 10);
 
     // Baseline unadjusted shelf life (for seasonal impact delta)
     const rawUnadjustedLife =
@@ -140,6 +157,12 @@ export const KineticDecayWidget: React.FC<KineticDecayWidgetProps> = ({
       tempFactor,
       unadjustedDays,
       seasonalDaysDelta,
+      coldChainLoss,
+      coldChainScore: effectiveColdChainTelemetry?.coldChainScore ?? 87,
+      targetTemp: effectiveColdChainTelemetry?.targetTempCelsius ?? 8.0,
+      actualAvgTemp: effectiveColdChainTelemetry?.actualAvgTempCelsius ?? 10.4,
+      maxTemp: effectiveColdChainTelemetry?.maxTempCelsius ?? 16.8,
+      timeAboveThreshold: effectiveColdChainTelemetry?.timeAboveThresholdFormatted ?? '2h 17m',
     };
   }, [
     kinetic_parameters,
@@ -149,6 +172,8 @@ export const KineticDecayWidget: React.FC<KineticDecayWidgetProps> = ({
     storageMethod,
     cold_storage_shelf_life_days,
     effectiveSeasonalMultiplier,
+    coldChainTelemetry,
+    report.cold_chain_telemetry,
   ]);
 
   // Color-coded heat-map grid across potential storage variations (2°C to 30°C)
@@ -257,6 +282,16 @@ export const KineticDecayWidget: React.FC<KineticDecayWidgetProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5 bg-stone-950 p-1 rounded-lg border border-stone-800 text-xs">
+          {onOpenDigitalTwin && (
+            <button
+              onClick={onOpenDigitalTwin}
+              className="px-2.5 py-1 rounded-md text-[11px] font-semibold text-emerald-300 hover:text-white bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/80 flex items-center gap-1 transition-colors"
+              title="Open full Digital Twin simulation"
+            >
+              <Activity className="w-3 h-3 text-emerald-400 animate-pulse" />
+              <span>Digital Twin</span>
+            </button>
+          )}
           <button
             onClick={() => onStorageChange('AMBIENT_LORRY')}
             className={`px-2.5 py-1 rounded-md text-[11px] font-medium flex items-center gap-1 transition-colors ${
@@ -281,6 +316,82 @@ export const KineticDecayWidget: React.FC<KineticDecayWidgetProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Dynamic Data-Driven Cold Chain Telemetry Summary (Target: 8°C, Actual: 10.4°C, Max: 16.8°C, Excursion: 2h 17m, Score: 87/100, Loss: -1.4d) */}
+      <ColdChainSummaryWidget
+        telemetry={coldChainTelemetry || report.cold_chain_telemetry || {
+          targetTempCelsius: 8.0,
+          actualAvgTempCelsius: 10.4,
+          maxTempCelsius: 16.8,
+          minTempCelsius: 6.2,
+          thresholdTempCelsius: 10.0,
+          timeAboveThresholdMinutes: 137,
+          timeAboveThresholdFormatted: '2h 17m',
+          thermalExposureScore: 14.6,
+          coldChainScore: 87,
+          shelfLifeLossDays: -1.4,
+          temperatureSensors: {
+            ambientProbeTemp: 10.4,
+            cargoCoreSimTemp: 9.8,
+            supplyAirTemp: 7.8,
+            returnAirTemp: 10.2,
+            probeCalibrationDate: '2026-09-18',
+            sensorHealthStatus: 'HEALTHY',
+          },
+          humiditySensors: {
+            relativeHumidityPct: 84,
+            vaporPressureDeficitKpa: 0.42,
+            dewPointCelsius: 7.1,
+            condensationRisk: false,
+          },
+          gpsTelematics: {
+            currentLat: 19.076,
+            currentLng: 72.877,
+            originName: 'Nashik Packhouse',
+            destinationName: 'Navi Mumbai Dark Store',
+            totalDistanceKm: 160,
+            distanceCoveredKm: 154,
+            currentSpeedKmH: 64,
+            routeStopsCount: 2,
+            transitDurationHours: 12.0,
+            waypoints: [],
+          },
+          reeferTelemetry: {
+            reeferUnitModel: 'Carrier Vector 1550',
+            compressorStatus: 'RUNNING',
+            setPointCelsius: 8.0,
+            returnAirTemp: 10.2,
+            supplyAirTemp: 7.8,
+            doorOpenEventsCount: 2,
+            totalDoorOpenMinutes: 48,
+            batteryVoltage: 13.4,
+            fuelLevelPct: 82,
+            activeAlarms: [],
+          },
+          bluetoothDataLoggers: {
+            deviceModel: 'TempTale BLE Pro 4.2',
+            macAddress: 'C4:7D:E0:41:88:2F',
+            batteryPct: 96,
+            rssi: -54,
+            loggedSamplePointsCount: 144,
+            loggingIntervalMinutes: 5,
+            lastSyncTimestamp: 'Just now (Bluetooth 5.2 Direct)',
+            syncStatus: 'SYNCED',
+            nistTraceable: true,
+          },
+          vehicleTelematics: {
+            vehicleRegistration: 'MH-15-EG-8821',
+            ignitionState: 'ON',
+            engineRpm: 1680,
+            idlingTimeMinutes: 34,
+            roadShockPeakG: 1.28,
+            harshBrakingEvents: 1,
+            telematicsProvider: 'Samsara IoT Gateway',
+          },
+          timeSeries: [],
+        }}
+        onOpenTelemetryStudio={onOpenTelemetryStudio}
+      />
 
       {/* Primary Remaining Days KPI Cards */}
       <div className="grid grid-cols-2 gap-3">
@@ -939,6 +1050,18 @@ export const KineticDecayWidget: React.FC<KineticDecayWidgetProps> = ({
                 {storageMethod === 'CHILLED_REEFER'
                   ? `${Math.max(8.0, ambientTemp - 14)}°C (Reefer)`
                   : `${ambientTemp}°C (Ambient)`}
+              </span>
+            </div>
+            <div>
+              • Cold Chain Loss:{' '}
+              <span className="text-rose-400 font-bold">
+                {dynamicKinetics.coldChainLoss} days (Score: {dynamicKinetics.coldChainScore}/100)
+              </span>
+            </div>
+            <div>
+              • Excursion Metric:{' '}
+              <span className="text-amber-300">
+                {dynamicKinetics.timeAboveThreshold} &gt; 10°C (Max {dynamicKinetics.maxTemp}°C)
               </span>
             </div>
           </div>

@@ -36,82 +36,151 @@ export const MultiAgentModal: React.FC<MultiAgentModalProps> = ({ isOpen, onClos
         {/* Architecture Flow Diagram */}
         <div className="p-4 rounded-xl bg-stone-950 border border-stone-800 font-mono text-[11px] text-stone-300 flex flex-col gap-2">
           <div className="text-emerald-400 font-bold uppercase tracking-wider text-[10px]">
-            End-to-End Multi-Agent Swarm Pipeline
+            Item 22: 9-Agent Orchestration Swarm Architecture
           </div>
-          <div className="text-stone-400 leading-relaxed">
-            [Camera Stream / Upload] ──&gt; [Laplacian Variance &amp; Reticle HUD Check]
+          <div className="text-stone-400 leading-relaxed overflow-x-auto">
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Orchestrator
             <br />
-            &nbsp;&nbsp;│
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│
             <br />
-            &nbsp;&nbsp;├──► <strong className="text-emerald-300">Agent 1: Optical Perception &amp; Phenotyping</strong> (USDA 1-6 Stage, Variety, Bruise %)
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;┌────────────┼─────────────┐
             <br />
-            &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓
             <br />
-            &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;▼
+            &nbsp;&nbsp;&nbsp;<strong className="text-emerald-300">1. Vision</strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong className="text-rose-300">2. Pathology</strong>&nbsp;&nbsp;&nbsp;&nbsp;<strong className="text-cyan-300">3. Kinetic Twin</strong>
             <br />
-            &nbsp;&nbsp;├──► <strong className="text-lime-300">Agent 2: Kinetic Decay &amp; Agronomy Engine</strong> (Arrhenius &amp; Respiration Q10 Formula)
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓
             <br />
-            &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└──────────► <strong className="text-amber-300">4. Decision &amp; Rules</strong> ◄┘
             <br />
-            &nbsp;&nbsp;├──► [Branch by Context Mode]
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│
             <br />
-            &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├─► <strong className="text-cyan-300">Agent 3: Field Decision &amp; Logistics Routing</strong> (Pick Now vs Hold, Lorry Route)
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;┌──────────┼────────────┐
             <br />
-            &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└─► <strong className="text-amber-300">Agent 4: Inbound Quality Gate &amp; Dynamic Markdown</strong> (A/B/Reject, Flash -15%, ERP)
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓
+            <br />
+            &nbsp;&nbsp;&nbsp;&nbsp;<strong className="text-indigo-300">5. Demand</strong>&nbsp;&nbsp;&nbsp;&nbsp;<strong className="text-amber-400">7. Pricing</strong>&nbsp;&nbsp;&nbsp;&nbsp;<strong className="text-emerald-400">6. Routing</strong>
+            <br />
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│
+            <br />
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└──────────┼────────────┘
+            <br />
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓
+            <br />
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong className="text-cyan-400">8. Risk &amp; Root Cause</strong>
+            <br />
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓
+            <br />
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong className="text-white">Final Action (ERP / WMS / Dispatch)</strong>
+            <br />
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓
+            <br />
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong className="text-stone-300">Actual Outcome (Sales / Waste Audit)</strong>
+            <br />
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓
+            <br />
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong className="text-purple-400">9. Learning Agent (Continuous Calibration)</strong>
           </div>
         </div>
 
-        {/* The 4 Agent Profiles */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+        {/* The 9 Agent Profiles */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
           {/* Agent 1 */}
-          <div className="p-3.5 rounded-xl bg-stone-950/70 border border-stone-800 flex flex-col gap-1.5">
+          <div className="p-3.5 rounded-xl bg-stone-950 border border-stone-800 flex flex-col gap-1.5">
             <div className="flex items-center gap-2 font-bold text-emerald-300">
-              <span className="w-5 h-5 rounded-full bg-emerald-950 border border-emerald-800 text-[10px] flex items-center justify-center font-mono">
-                1
-              </span>
-              <span>Agent 1: Optical Perception &amp; Phenotyping</span>
+              <span className="w-5 h-5 rounded-full bg-emerald-950 border border-emerald-800 text-[10px] flex items-center justify-center font-mono">1</span>
+              <span>Vision &amp; Variety</span>
             </div>
             <p className="text-stone-400 text-[11px] leading-relaxed">
-              Processes the incoming image or high-res capture. Analyzes chlorophyll breakdown (green to lycopene red), identifies variety, and segments mechanical punctures, compression bruises, and fungal sporulation.
+              Optical phenotyping, USDA 1-6 stage, variety identification, and image quality validation gate.
             </p>
           </div>
 
           {/* Agent 2 */}
-          <div className="p-3.5 rounded-xl bg-stone-950/70 border border-stone-800 flex flex-col gap-1.5">
-            <div className="flex items-center gap-2 font-bold text-lime-300">
-              <span className="w-5 h-5 rounded-full bg-lime-950 border border-lime-800 text-[10px] flex items-center justify-center font-mono">
-                2
-              </span>
-              <span>Agent 2: Kinetic Shelf-Life Decay Engine</span>
+          <div className="p-3.5 rounded-xl bg-stone-950 border border-stone-800 flex flex-col gap-1.5">
+            <div className="flex items-center gap-2 font-bold text-rose-300">
+              <span className="w-5 h-5 rounded-full bg-rose-950 border border-rose-800 text-[10px] flex items-center justify-center font-mono">2</span>
+              <span>Pathology &amp; Segmentation</span>
             </div>
             <p className="text-stone-400 text-[11px] leading-relaxed">
-              Executes the post-harvest kinetic respiration formula using real ambient field/dock temperature, bruise penalty coefficient, and commodity baseline shelf life to output remaining days under ambient vs cold storage.
+              Calculates exact defect surface area (e.g. 8.7 cm² / 74 cm² = 11.7%) and 360° multi-image fusion.
             </p>
           </div>
 
           {/* Agent 3 */}
-          <div className="p-3.5 rounded-xl bg-stone-950/70 border border-stone-800 flex flex-col gap-1.5">
+          <div className="p-3.5 rounded-xl bg-stone-950 border border-stone-800 flex flex-col gap-1.5">
             <div className="flex items-center gap-2 font-bold text-cyan-300">
-              <span className="w-5 h-5 rounded-full bg-cyan-950 border border-cyan-800 text-[10px] flex items-center justify-center font-mono">
-                3
-              </span>
-              <span>Agent 3: Pre-Harvest Decision &amp; Logistics Routing</span>
+              <span className="w-5 h-5 rounded-full bg-cyan-950 border border-cyan-800 text-[10px] flex items-center justify-center font-mono">3</span>
+              <span>Kinetic Digital Twin</span>
             </div>
             <p className="text-stone-400 text-[11px] leading-relaxed">
-              Field Mode specialist. Correlates produce biochemical stage with planned transit distance (km) and road transit hours to prevent premature or overripe harvests, directing crops to optimal channels.
+              Arrhenius bio-decay simulation using real IoT reefer telemetry, temperature excursions, and ethylene.
             </p>
           </div>
 
           {/* Agent 4 */}
-          <div className="p-3.5 rounded-xl bg-stone-950/70 border border-stone-800 flex flex-col gap-1.5">
+          <div className="p-3.5 rounded-xl bg-stone-950 border border-stone-800 flex flex-col gap-1.5">
             <div className="flex items-center gap-2 font-bold text-amber-300">
-              <span className="w-5 h-5 rounded-full bg-amber-950 border border-amber-800 text-[10px] flex items-center justify-center font-mono">
-                4
-              </span>
-              <span>Agent 4: Inbound Quality Gate &amp; Dynamic Markdown</span>
+              <span className="w-5 h-5 rounded-full bg-amber-950 border border-amber-800 text-[10px] flex items-center justify-center font-mono">4</span>
+              <span>Rules Engine</span>
             </div>
             <p className="text-stone-400 text-[11px] leading-relaxed">
-              Dark Store Mode specialist. Evaluates incoming crates in &lt;2 seconds, assigns Grade A/B/Reject disposition, and triggers automated flash markdown discounts on consumer quick-commerce storefronts to clear inventory.
+              Deterministic customer commercial tolerances (Zepto Quick-Commerce vs Premium vs Processing).
+            </p>
+          </div>
+
+          {/* Agent 5 */}
+          <div className="p-3.5 rounded-xl bg-stone-950 border border-stone-800 flex flex-col gap-1.5">
+            <div className="flex items-center gap-2 font-bold text-indigo-300">
+              <span className="w-5 h-5 rounded-full bg-indigo-950 border border-indigo-800 text-[10px] flex items-center justify-center font-mono">5</span>
+              <span>Demand Forecast</span>
+            </div>
+            <p className="text-stone-400 text-[11px] leading-relaxed">
+              Forecasts store-level sell-through, expected unsold kg, and triggers inter-store inventory transfer.
+            </p>
+          </div>
+
+          {/* Agent 6 */}
+          <div className="p-3.5 rounded-xl bg-stone-950 border border-stone-800 flex flex-col gap-1.5">
+            <div className="flex items-center gap-2 font-bold text-emerald-300">
+              <span className="w-5 h-5 rounded-full bg-emerald-950 border border-emerald-800 text-[10px] flex items-center justify-center font-mono">6</span>
+              <span>Routing Optimizer</span>
+            </div>
+            <p className="text-stone-400 text-[11px] leading-relaxed">
+              Evaluates multi-store network (Store 1: 82%, Store 2: 54%, Store 3: 91%) to select highest margin destination.
+            </p>
+          </div>
+
+          {/* Agent 7 */}
+          <div className="p-3.5 rounded-xl bg-stone-950 border border-stone-800 flex flex-col gap-1.5">
+            <div className="flex items-center gap-2 font-bold text-amber-400">
+              <span className="w-5 h-5 rounded-full bg-amber-950 border border-amber-800 text-[10px] flex items-center justify-center font-mono">7</span>
+              <span>Pricing &amp; Markdown</span>
+            </div>
+            <p className="text-stone-400 text-[11px] leading-relaxed">
+              8-variable dynamic markdown optimizer (shelf-life, inventory, velocity, competitor price, peak hours).
+            </p>
+          </div>
+
+          {/* Agent 8 */}
+          <div className="p-3.5 rounded-xl bg-stone-950 border border-stone-800 flex flex-col gap-1.5">
+            <div className="flex items-center gap-2 font-bold text-rose-400">
+              <span className="w-5 h-5 rounded-full bg-rose-950 border border-rose-800 text-[10px] flex items-center justify-center font-mono">8</span>
+              <span>Risk &amp; Root Cause</span>
+            </div>
+            <p className="text-stone-400 text-[11px] leading-relaxed">
+              Autonomous root cause diagnostics (e.g. 61% compression bruise) and predictive supplier risk scoring.
+            </p>
+          </div>
+
+          {/* Agent 9 */}
+          <div className="p-3.5 rounded-xl bg-purple-950/40 border border-purple-800 flex flex-col gap-1.5">
+            <div className="flex items-center gap-2 font-bold text-purple-300">
+              <span className="w-5 h-5 rounded-full bg-purple-950 border border-purple-800 text-[10px] flex items-center justify-center font-mono">9</span>
+              <span>Learning &amp; Calibration</span>
+            </div>
+            <p className="text-stone-300 text-[11px] leading-relaxed">
+              Continuous model calibration from ground-truth sales and customer refund claims.
             </p>
           </div>
         </div>
