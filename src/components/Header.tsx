@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Sprout,
   Warehouse,
@@ -21,8 +21,12 @@ import {
   Bell,
   Sparkles,
   Layers,
+  Printer,
+  FileCheck2,
+  ShieldCheck,
+  TrendingUp,
 } from 'lucide-react';
-import type { InspectionMode } from '../types';
+import type { InspectionMode, WorkspaceTab, OperationalRole } from '../types';
 
 interface HeaderProps {
   mode: InspectionMode;
@@ -31,6 +35,16 @@ interface HeaderProps {
   onToggleMobileView: () => void;
   geminiReady: boolean;
   onOpenMultiAgentModal: () => void;
+  activeWorkspace?: WorkspaceTab;
+  onSelectWorkspaceTab?: (tab: WorkspaceTab) => void;
+  userRole?: OperationalRole;
+  onRoleChange?: (role: OperationalRole) => void;
+  onOpenAlertsModal?: () => void;
+  onOpenAuditModal?: () => void;
+  onOpenBarcodeModal?: () => void;
+  unreadAlertsCount?: number;
+
+  // Legacy fallback props for compatibility
   isChatMode?: boolean;
   onToggleChatMode?: () => void;
   isFeedbackStudio?: boolean;
@@ -52,8 +66,6 @@ interface HeaderProps {
   isSupplierScorecardStudio?: boolean;
   onToggleSupplierScorecardStudio?: () => void;
   onOpenMobileFieldModal?: () => void;
-  onOpenAlertsModal?: () => void;
-  onOpenAuditModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -63,744 +75,282 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleMobileView,
   geminiReady,
   onOpenMultiAgentModal,
-  isChatMode = false,
-  onToggleChatMode,
-  isFeedbackStudio = false,
-  onToggleFeedbackStudio,
-  isCommodityDatabase = false,
-  onToggleCommodityDatabase,
-  isTelemetryStudio = false,
-  onToggleTelemetryStudio,
-  isDigitalTwin = false,
-  onToggleDigitalTwin,
-  isGradeEngine = false,
-  onToggleGradeEngine,
-  isCommandCenter = false,
-  onToggleCommandCenter,
-  isPricingStudio = false,
-  onTogglePricingStudio,
-  isDemandRoutingStudio = false,
-  onToggleDemandRoutingStudio,
-  isSupplierScorecardStudio = false,
-  onToggleSupplierScorecardStudio,
-  onOpenMobileFieldModal,
+  activeWorkspace = 'INSPECTION',
+  onSelectWorkspaceTab,
+  userRole = 'DOCK_QC',
+  onRoleChange,
   onOpenAlertsModal,
   onOpenAuditModal,
+  onOpenBarcodeModal,
+  unreadAlertsCount = 2,
+  // Legacy props
+  onToggleChatMode,
+  onToggleFeedbackStudio,
+  onToggleCommodityDatabase,
+  onToggleGradeEngine,
+  onToggleCommandCenter,
+  onTogglePricingStudio,
+  onToggleDemandRoutingStudio,
+  onToggleSupplierScorecardStudio,
+  onOpenMobileFieldModal,
 }) => {
-  const [isStudiosMenuOpen, setIsStudiosMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const studiosDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        studiosDropdownRef.current &&
-        !studiosDropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsStudiosMenuOpen(false);
-      }
+  const handleTabClick = (tab: WorkspaceTab) => {
+    if (onSelectWorkspaceTab) {
+      onSelectWorkspaceTab(tab);
+    } else {
+      // Legacy trigger routing
+      if (tab === 'CHAT_SWARM' && onToggleChatMode) onToggleChatMode();
+      if (tab === 'COMMAND_CENTER' && onToggleCommandCenter) onToggleCommandCenter();
+      if (tab === 'RULES_ENGINE' && onToggleGradeEngine) onToggleGradeEngine();
+      if (tab === 'FEEDBACK_LEDGER' && onToggleFeedbackStudio) onToggleFeedbackStudio();
+      if (tab === 'COMMODITY_DB' && onToggleCommodityDatabase) onToggleCommodityDatabase();
+      if (tab === 'SUPPLY_CHAIN' && onTogglePricingStudio) onTogglePricingStudio();
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Close mobile menu on resize to desktop
-  useEffect(() => {
-    function handleResize() {
-      if (window.innerWidth >= 1024) {
-        setIsMobileMenuOpen(false);
-      }
-    }
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const anyStudioActive =
-    isFeedbackStudio ||
-    isCommodityDatabase ||
-    isTelemetryStudio ||
-    isDigitalTwin ||
-    isGradeEngine ||
-    isPricingStudio ||
-    isDemandRoutingStudio ||
-    isSupplierScorecardStudio;
-
-  const getActiveStudioLabel = () => {
-    if (isGradeEngine) return 'Grade Rules';
-    if (isPricingStudio) return 'Dynamic Pricing';
-    if (isDemandRoutingStudio) return 'Logistics & Demand';
-    if (isSupplierScorecardStudio) return 'Suppliers';
-    if (isDigitalTwin) return 'Digital Twin';
-    if (isTelemetryStudio) return 'Cold Chain IoT';
-    if (isCommodityDatabase) return 'Produce DB';
-    if (isFeedbackStudio) return 'Feedback Loop';
-    return 'Intelligence Studios';
+    setIsMobileMenuOpen(false);
   };
 
-  const closeAllStudios = () => {
-    if (isChatMode && onToggleChatMode) onToggleChatMode();
-    if (isFeedbackStudio && onToggleFeedbackStudio) onToggleFeedbackStudio();
-    if (isCommodityDatabase && onToggleCommodityDatabase) onToggleCommodityDatabase();
-    if (isTelemetryStudio && onToggleTelemetryStudio) onToggleTelemetryStudio();
-    if (isDigitalTwin && onToggleDigitalTwin) onToggleDigitalTwin();
-    if (isGradeEngine && onToggleGradeEngine) onToggleGradeEngine();
-    if (isCommandCenter && onToggleCommandCenter) onToggleCommandCenter();
-    if (isPricingStudio && onTogglePricingStudio) onTogglePricingStudio();
-    if (isDemandRoutingStudio && onToggleDemandRoutingStudio) onToggleDemandRoutingStudio();
-    if (isSupplierScorecardStudio && onToggleSupplierScorecardStudio) onToggleSupplierScorecardStudio();
-  };
+  const workspaceTabs: Array<{ id: WorkspaceTab; label: string; icon: React.ReactNode; badge?: string }> = [
+    {
+      id: 'INSPECTION',
+      label: 'Live Inspection',
+      icon: <Activity className="w-4 h-4" />,
+    },
+    {
+      id: 'COMMAND_CENTER',
+      label: 'Command Center',
+      icon: <Globe2 className="w-4 h-4" />,
+    },
+    {
+      id: 'RULES_ENGINE',
+      label: 'Rules Engine',
+      icon: <Scale className="w-4 h-4" />,
+    },
+    {
+      id: 'SUPPLY_CHAIN',
+      label: 'Supply Chain & ROI',
+      icon: <TrendingUp className="w-4 h-4" />,
+    },
+    {
+      id: 'FEEDBACK_LEDGER',
+      label: 'Audit & Learning',
+      icon: <History className="w-4 h-4" />,
+    },
+    {
+      id: 'COMMODITY_DB',
+      label: 'Produce DB',
+      icon: <Database className="w-4 h-4" />,
+    },
+    {
+      id: 'CHAT_SWARM',
+      label: 'Swarm Chat',
+      icon: <MessageSquare className="w-4 h-4" />,
+    },
+  ];
 
   return (
-    <header className="border-b border-stone-800/80 bg-stone-950/90 backdrop-blur-xl sticky top-0 z-50">
+    <header className="bg-stone-900 border-b border-stone-800 sticky top-0 z-40 backdrop-blur-md bg-stone-900/95 shadow-md">
+      {/* Top Banner Bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 gap-3">
-          {/* Brand Wordmark & Tagline */}
-          <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center justify-between h-15 gap-4">
+          {/* Brand Logo & Tagline */}
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => {
-                closeAllStudios();
-                onModeChange('FIELD_PRE_HARVEST');
-                setIsMobileMenuOpen(false);
-              }}
+              onClick={() => handleTabClick('INSPECTION')}
               className="flex items-center gap-2.5 text-left group focus:outline-none"
             >
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-lg shadow-emerald-950/50 group-hover:scale-105 transition-transform">
-                <Sprout className="w-5 h-5 text-stone-950 stroke-[2.5]" />
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-800 flex items-center justify-center text-white shadow-md shadow-emerald-950/40 group-hover:scale-105 transition-transform">
+                <Sprout className="w-5 h-5 text-emerald-100" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-extrabold text-lg sm:text-xl tracking-tight text-white font-sans">
-                    Agri<span className="text-emerald-400">Grade</span>
-                  </span>
-                  <span className="text-[10px] font-mono tracking-wider px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 hidden sm:inline-block">
-                    PRODUCE QA
+                  <span className="font-bold text-base tracking-tight text-white font-sans">AgriGrade</span>
+                  <span className="text-[10px] font-mono tracking-widest uppercase bg-stone-800 text-emerald-400 px-1.5 py-0.5 rounded border border-stone-700">
+                    2.1 Enterprise
                   </span>
                 </div>
-                <p className="text-[11px] text-stone-400 font-sans hidden xl:block leading-none mt-0.5">
-                  Multi-Factor Quality &amp; Dynamic Supply Chain
+                <p className="text-[11px] text-stone-400 hidden sm:block">
+                  Multi-Agent Post-Harvest Quality & Kinetic Respiration Intelligence
                 </p>
               </div>
             </button>
           </div>
 
-          {/* Desktop & Tablet Navigation: Primary Modes & Studios */}
-          <nav className="hidden md:flex items-center gap-1.5 bg-stone-900/80 p-1 rounded-xl border border-stone-800 shadow-inner">
+          {/* Center: Operational Role Selector */}
+          <div className="hidden md:flex items-center bg-stone-950/80 p-1 rounded-xl border border-stone-800 text-xs">
+            <span className="px-2.5 text-stone-500 font-medium">Role:</span>
             <button
               onClick={() => {
-                closeAllStudios();
-                onModeChange('FIELD_PRE_HARVEST');
-              }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 ${
-                mode === 'FIELD_PRE_HARVEST' && !anyStudioActive && !isCommandCenter && !isChatMode
-                  ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-950/50'
-                  : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/60'
-              }`}
-            >
-              <Sprout className="w-3.5 h-3.5" />
-              <span>Field Harvest</span>
-            </button>
-
-            <button
-              onClick={() => {
-                closeAllStudios();
+                if (onRoleChange) onRoleChange('DOCK_QC');
                 onModeChange('DARK_STORE_INBOUND');
               }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 ${
-                mode === 'DARK_STORE_INBOUND' && !anyStudioActive && !isCommandCenter && !isChatMode
-                  ? 'bg-amber-600 text-white shadow-sm shadow-amber-950/50'
-                  : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/60'
+              className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 ${
+                userRole === 'DOCK_QC'
+                  ? 'bg-amber-950 text-amber-200 border border-amber-600/50 shadow-sm'
+                  : 'text-stone-400 hover:text-stone-200'
               }`}
             >
-              <Warehouse className="w-3.5 h-3.5" />
-              <span>Dark Store Gate</span>
+              <Warehouse className="w-3.5 h-3.5 text-amber-400" />
+              <span>Dock QA Inspector</span>
             </button>
+            <button
+              onClick={() => {
+                if (onRoleChange) onRoleChange('FIELD_SCOUT');
+                onModeChange('FIELD_PRE_HARVEST');
+              }}
+              className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 ${
+                userRole === 'FIELD_SCOUT'
+                  ? 'bg-emerald-950 text-emerald-200 border border-emerald-600/50 shadow-sm'
+                  : 'text-stone-400 hover:text-stone-200'
+              }`}
+            >
+              <Sprout className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Field Scout</span>
+            </button>
+            <button
+              onClick={() => {
+                if (onRoleChange) onRoleChange('SUPPLY_CHAIN_LEAD');
+                handleTabClick('COMMAND_CENTER');
+              }}
+              className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 ${
+                userRole === 'SUPPLY_CHAIN_LEAD'
+                  ? 'bg-indigo-950 text-indigo-200 border border-indigo-600/50 shadow-sm'
+                  : 'text-stone-400 hover:text-stone-200'
+              }`}
+            >
+              <Globe2 className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Supply Chain Lead</span>
+            </button>
+          </div>
 
-            {onToggleCommandCenter && (
+          {/* Right Action Icons & Status */}
+          <div className="flex items-center gap-2">
+            {/* Thermal Crate Label Generator Shortcut */}
+            {onOpenBarcodeModal && (
               <button
-                onClick={() => {
-                  closeAllStudios();
-                  onToggleCommandCenter();
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 ${
-                  isCommandCenter
-                    ? 'bg-teal-600 text-white shadow-sm shadow-teal-950/50'
-                    : 'text-teal-400 hover:text-teal-200 hover:bg-stone-800/60'
-                }`}
+                onClick={onOpenBarcodeModal}
+                className="p-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 border border-stone-700 text-xs transition-colors flex items-center gap-1.5"
+                title="Print Crate Barcode & Thermal Label"
               >
-                <Globe2 className="w-3.5 h-3.5" />
-                <span>Command Center</span>
+                <Printer className="w-4 h-4 text-emerald-400" />
+                <span className="hidden xl:inline font-medium">Print Label</span>
               </button>
             )}
 
-            {/* Studios Popover Menu */}
-            <div className="relative" ref={studiosDropdownRef}>
-              <button
-                onClick={() => setIsStudiosMenuOpen(!isStudiosMenuOpen)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 ${
-                  anyStudioActive
-                    ? 'bg-purple-600 text-white shadow-sm shadow-purple-950/50'
-                    : 'text-purple-300 hover:text-purple-100 hover:bg-stone-800/60'
-                }`}
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span>{getActiveStudioLabel()}</span>
-                <ChevronDown className={`w-3 h-3 transition-transform ${isStudiosMenuOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {isStudiosMenuOpen && (
-                <div className="absolute right-0 mt-2 w-72 rounded-2xl bg-stone-900 border border-stone-800 shadow-2xl p-2 z-50 flex flex-col gap-1 backdrop-blur-2xl">
-                  <div className="px-2.5 py-1.5 text-[10px] font-mono uppercase tracking-wider text-stone-400 border-b border-stone-800/80">
-                    Advanced Intelligence Studios
-                  </div>
-
-                  {onToggleGradeEngine && (
-                    <button
-                      onClick={() => {
-                        closeAllStudios();
-                        onToggleGradeEngine();
-                        setIsStudiosMenuOpen(false);
-                      }}
-                      className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs text-left transition-colors ${
-                        isGradeEngine ? 'bg-amber-500/20 text-amber-300 font-semibold' : 'text-stone-300 hover:bg-stone-800 hover:text-white'
-                      }`}
-                    >
-                      <Scale className="w-4 h-4 text-amber-400 shrink-0" />
-                      <div>
-                        <div className="font-medium">Dynamic Grade Rules</div>
-                        <div className="text-[10px] text-stone-400">Customer thresholds &amp; tolerances</div>
-                      </div>
-                    </button>
-                  )}
-
-                  {onTogglePricingStudio && (
-                    <button
-                      onClick={() => {
-                        closeAllStudios();
-                        onTogglePricingStudio();
-                        setIsStudiosMenuOpen(false);
-                      }}
-                      className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs text-left transition-colors ${
-                        isPricingStudio ? 'bg-amber-500/20 text-amber-300 font-semibold' : 'text-stone-300 hover:bg-stone-800 hover:text-white'
-                      }`}
-                    >
-                      <Tag className="w-4 h-4 text-amber-400 shrink-0" />
-                      <div>
-                        <div className="font-medium">Dynamic Pricing Optimizer</div>
-                        <div className="text-[10px] text-stone-400">8-factor automated markdown engine</div>
-                      </div>
-                    </button>
-                  )}
-
-                  {onToggleDemandRoutingStudio && (
-                    <button
-                      onClick={() => {
-                        closeAllStudios();
-                        onToggleDemandRoutingStudio();
-                        setIsStudiosMenuOpen(false);
-                      }}
-                      className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs text-left transition-colors ${
-                        isDemandRoutingStudio ? 'bg-indigo-500/20 text-indigo-300 font-semibold' : 'text-stone-300 hover:bg-stone-800 hover:text-white'
-                      }`}
-                    >
-                      <Route className="w-4 h-4 text-indigo-400 shrink-0" />
-                      <div>
-                        <div className="font-medium">Inter-Store Demand &amp; Routing</div>
-                        <div className="text-[10px] text-stone-400">Stochastic waste routing redistribution</div>
-                      </div>
-                    </button>
-                  )}
-
-                  {onToggleSupplierScorecardStudio && (
-                    <button
-                      onClick={() => {
-                        closeAllStudios();
-                        onToggleSupplierScorecardStudio();
-                        setIsStudiosMenuOpen(false);
-                      }}
-                      className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs text-left transition-colors ${
-                        isSupplierScorecardStudio ? 'bg-cyan-500/20 text-cyan-300 font-semibold' : 'text-stone-300 hover:bg-stone-800 hover:text-white'
-                      }`}
-                    >
-                      <Award className="w-4 h-4 text-cyan-400 shrink-0" />
-                      <div>
-                        <div className="font-medium">Supplier Forensics &amp; Risk</div>
-                        <div className="text-[10px] text-stone-400">Scorecard &amp; root-cause diagnostics</div>
-                      </div>
-                    </button>
-                  )}
-
-                  {onToggleDigitalTwin && (
-                    <button
-                      onClick={() => {
-                        closeAllStudios();
-                        onToggleDigitalTwin();
-                        setIsStudiosMenuOpen(false);
-                      }}
-                      className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs text-left transition-colors ${
-                        isDigitalTwin ? 'bg-emerald-500/20 text-emerald-300 font-semibold' : 'text-stone-300 hover:bg-stone-800 hover:text-white'
-                      }`}
-                    >
-                      <Activity className="w-4 h-4 text-emerald-400 shrink-0" />
-                      <div>
-                        <div className="font-medium">Real-Time Digital Twin</div>
-                        <div className="text-[10px] text-stone-400">Continuous Arrhenius kinetics</div>
-                      </div>
-                    </button>
-                  )}
-
-                  {onToggleTelemetryStudio && (
-                    <button
-                      onClick={() => {
-                        closeAllStudios();
-                        onToggleTelemetryStudio();
-                        setIsStudiosMenuOpen(false);
-                      }}
-                      className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs text-left transition-colors ${
-                        isTelemetryStudio ? 'bg-cyan-500/20 text-cyan-300 font-semibold' : 'text-stone-300 hover:bg-stone-800 hover:text-white'
-                      }`}
-                    >
-                      <Radio className="w-4 h-4 text-cyan-400 shrink-0" />
-                      <div>
-                        <div className="font-medium">Cold Chain IoT Telemetry</div>
-                        <div className="text-[10px] text-stone-400">BLE loggers, reefer &amp; excursions</div>
-                      </div>
-                    </button>
-                  )}
-
-                  {onToggleCommodityDatabase && (
-                    <button
-                      onClick={() => {
-                        closeAllStudios();
-                        onToggleCommodityDatabase();
-                        setIsStudiosMenuOpen(false);
-                      }}
-                      className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs text-left transition-colors ${
-                        isCommodityDatabase ? 'bg-purple-500/20 text-purple-300 font-semibold' : 'text-stone-300 hover:bg-stone-800 hover:text-white'
-                      }`}
-                    >
-                      <Database className="w-4 h-4 text-purple-400 shrink-0" />
-                      <div>
-                        <div className="font-medium">Produce Intelligence DB</div>
-                        <div className="text-[10px] text-stone-400">Variety priors &amp; agronomy data</div>
-                      </div>
-                    </button>
-                  )}
-
-                  {onToggleFeedbackStudio && (
-                    <button
-                      onClick={() => {
-                        closeAllStudios();
-                        onToggleFeedbackStudio();
-                        setIsStudiosMenuOpen(false);
-                      }}
-                      className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs text-left transition-colors ${
-                        isFeedbackStudio ? 'bg-purple-500/20 text-purple-300 font-semibold' : 'text-stone-300 hover:bg-stone-800 hover:text-white'
-                      }`}
-                    >
-                      <History className="w-4 h-4 text-purple-400 shrink-0" />
-                      <div>
-                        <div className="font-medium">Closed-Loop Learning</div>
-                        <div className="text-[10px] text-stone-400">Historical batches &amp; outcomes</div>
-                      </div>
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          </nav>
-
-          {/* Right Action Tools: Scout, Alerts, Audit, Swarm, Chat, View Toggle */}
-          <div className="hidden lg:flex items-center gap-2 shrink-0">
-            {onOpenMobileFieldModal && (
-              <button
-                onClick={onOpenMobileFieldModal}
-                className="px-2.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-stone-300 hover:text-white border border-stone-800 text-xs font-medium transition-colors flex items-center gap-1.5"
-                title="Open Field Scout Mobile Assistant"
-              >
-                <Smartphone className="w-3.5 h-3.5 text-lime-400" />
-                <span>Scout</span>
-              </button>
-            )}
-
+            {/* Operational WhatsApp/Dispatch Alerts Modal */}
             {onOpenAlertsModal && (
               <button
                 onClick={onOpenAlertsModal}
-                className="px-2.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-stone-300 hover:text-white border border-stone-800 text-xs font-medium transition-colors flex items-center gap-1.5"
-                title="Operational Alerts & WhatsApp Dispatch"
+                className="relative p-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 border border-stone-700 transition-colors"
+                title="Operational Alerts"
               >
-                <Bell className="w-3.5 h-3.5 text-rose-400" />
-                <span>Alerts</span>
+                <Bell className="w-4 h-4 text-amber-400" />
+                {unreadAlertsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-amber-500 text-stone-950 font-bold text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
+                    {unreadAlertsCount}
+                  </span>
+                )}
               </button>
             )}
 
+            {/* Audit Trail Modal */}
             {onOpenAuditModal && (
               <button
                 onClick={onOpenAuditModal}
-                className="px-2.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-stone-300 hover:text-white border border-stone-800 text-xs font-medium transition-colors flex items-center gap-1.5"
-                title="Audit Trail & Model Version Provenance"
+                className="p-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 border border-stone-700 transition-colors hidden sm:flex items-center gap-1.5 text-xs"
+                title="Open Audit Trail & HITL Log"
               >
-                <History className="w-3.5 h-3.5 text-purple-400" />
-                <span>Audit</span>
+                <FileCheck2 className="w-4 h-4 text-cyan-400" />
+                <span className="hidden xl:inline font-medium">Audit Ledger</span>
               </button>
             )}
 
+            {/* 9-Agent Swarm Modal */}
             <button
               onClick={onOpenMultiAgentModal}
-              className="px-2.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-stone-300 hover:text-white border border-stone-800 text-xs font-medium transition-colors flex items-center gap-1.5"
-              title="Inspect 9-Agent Multi-Agent Swarm Topology"
+              className="p-2 rounded-xl bg-purple-950/80 hover:bg-purple-900/90 text-purple-200 border border-purple-700/80 text-xs transition-colors flex items-center gap-1.5 shadow-sm"
+              title="Inspect 9-Agent Architecture Trace"
             >
-              <Cpu className="w-3.5 h-3.5 text-emerald-400" />
-              <span>9 Agents</span>
+              <Cpu className="w-4 h-4 text-purple-400" />
+              <span className="hidden lg:inline font-medium">9 Agents</span>
             </button>
 
-            {onToggleChatMode && (
-              <button
-                onClick={onToggleChatMode}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                  isChatMode
-                    ? 'bg-purple-600 text-white shadow-md shadow-purple-950/60'
-                    : 'bg-stone-900 hover:bg-stone-800 text-purple-300 hover:text-white border border-stone-800'
-                }`}
-                title="Open Zero-Hallucination Agent Chat"
-              >
-                <MessageSquare className="w-3.5 h-3.5" />
-                <span>Agent Chat</span>
-              </button>
-            )}
-
-            {/* Handheld Preview Toggle */}
+            {/* Mobile View Toggle */}
             <button
               onClick={onToggleMobileView}
-              className={`p-2 rounded-lg border text-xs font-medium transition-colors ${
+              className={`p-2 rounded-xl border text-xs transition-colors ${
                 isMobileView
-                  ? 'bg-emerald-950/80 border-emerald-700 text-emerald-300'
-                  : 'bg-stone-900 hover:bg-stone-800 border-stone-800 text-stone-400 hover:text-stone-200'
+                  ? 'bg-emerald-950 border-emerald-500/60 text-emerald-200'
+                  : 'bg-stone-800 border-stone-700 text-stone-400 hover:text-stone-200'
               }`}
-              title="Toggle 390px Mobile View Preview"
+              title={isMobileView ? 'Switch to Desktop Layout' : 'Preview Field Mobile Layout'}
             >
-              {isMobileView ? <Smartphone className="w-3.5 h-3.5" /> : <Monitor className="w-3.5 h-3.5" />}
+              {isMobileView ? <Monitor className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
             </button>
 
-            {/* AI Status */}
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-stone-900 border border-stone-800 text-[11px] text-stone-400">
-              <span className={`w-1.5 h-1.5 rounded-full ${geminiReady ? 'bg-emerald-400' : 'bg-lime-400'}`} />
-              <span className="font-mono">Gemini 3.8</span>
-            </div>
-          </div>
-
-          {/* Mobile & Tablet Hamburger Toggle */}
-          <div className="flex items-center gap-2 md:hidden">
-            {onToggleChatMode && (
-              <button
-                onClick={onToggleChatMode}
-                className={`p-2 rounded-xl border text-xs transition-colors ${
-                  isChatMode
-                    ? 'bg-purple-600 border-purple-500 text-white'
-                    : 'bg-stone-900 border-stone-800 text-purple-300'
-                }`}
-                aria-label="Toggle Agent Chat"
-              >
-                <MessageSquare className="w-4 h-4" />
-              </button>
-            )}
-
+            {/* Mobile Hamburger Toggle */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-200 border border-stone-800 focus:outline-none"
-              aria-label="Toggle Navigation Menu"
+              className="p-2 rounded-xl bg-stone-800 border border-stone-700 text-stone-300 md:hidden"
+              aria-label="Toggle navigation menu"
             >
               {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
+
+        {/* Desktop Tab Navigation Bar */}
+        <div className="hidden md:flex items-center gap-1 py-1.5 border-t border-stone-800/80 overflow-x-auto scrollbar-none">
+          {workspaceTabs.map((tab) => {
+            const isActive = activeWorkspace === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => handleTabClick(tab.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-2 transition-all whitespace-nowrap ${
+                  isActive
+                    ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-950/40'
+                    : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/60'
+                }`}
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Mobile & Tablet Full-Screen Sheet Drawer */}
+      {/* Mobile Accordion Menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-stone-800/80 bg-stone-950/98 backdrop-blur-2xl max-h-[85vh] overflow-y-auto px-4 py-5 flex flex-col gap-5 shadow-2xl">
-          {/* Primary Operations Modes */}
-          <div className="flex flex-col gap-2">
-            <div className="text-[11px] font-mono uppercase tracking-wider text-stone-400 px-1">
-              Primary Inspection &amp; Control
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => {
-                  closeAllStudios();
-                  onModeChange('FIELD_PRE_HARVEST');
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`p-3 rounded-xl border text-left flex flex-col gap-1 transition-all ${
-                  mode === 'FIELD_PRE_HARVEST' && !anyStudioActive && !isCommandCenter && !isChatMode
-                    ? 'bg-emerald-950/70 border-emerald-500 text-emerald-200 shadow-sm'
-                    : 'bg-stone-900/60 border-stone-800 text-stone-300 hover:bg-stone-800'
-                }`}
-              >
-                <Sprout className="w-4 h-4 text-emerald-400" />
-                <span className="text-xs font-bold">Field Mode</span>
-                <span className="text-[10px] text-stone-400">Pre-Harvest Advisory</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  closeAllStudios();
-                  onModeChange('DARK_STORE_INBOUND');
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`p-3 rounded-xl border text-left flex flex-col gap-1 transition-all ${
-                  mode === 'DARK_STORE_INBOUND' && !anyStudioActive && !isCommandCenter && !isChatMode
-                    ? 'bg-amber-950/70 border-amber-500 text-amber-200 shadow-sm'
-                    : 'bg-stone-900/60 border-stone-800 text-stone-300 hover:bg-stone-800'
-                }`}
-              >
-                <Warehouse className="w-4 h-4 text-amber-400" />
-                <span className="text-xs font-bold">Dark Store</span>
-                <span className="text-[10px] text-stone-400">Dock Quality Gate</span>
-              </button>
-            </div>
-
-            {onToggleCommandCenter && (
-              <button
-                onClick={() => {
-                  closeAllStudios();
-                  onToggleCommandCenter();
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`w-full p-3 rounded-xl border text-left flex items-center justify-between transition-all ${
-                  isCommandCenter
-                    ? 'bg-teal-950/70 border-teal-500 text-teal-200'
-                    : 'bg-stone-900/60 border-stone-800 text-stone-300 hover:bg-stone-800'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Globe2 className="w-4 h-4 text-teal-400" />
-                  <div>
-                    <div className="text-xs font-bold">AgriGrade Command Center</div>
-                    <div className="text-[10px] text-stone-400">Farm-to-shelf multi-echelon network</div>
-                  </div>
-                </div>
-                <span className="text-xs font-mono text-teal-400">Live</span>
-              </button>
-            )}
+        <div className="md:hidden border-t border-stone-800 bg-stone-950 px-4 py-3 space-y-3">
+          <div className="text-xs text-stone-500 font-semibold uppercase tracking-wider">
+            Operational Workspace
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {workspaceTabs.map((tab) => {
+              const isActive = activeWorkspace === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabClick(tab.id)}
+                  className={`p-2.5 rounded-xl text-xs font-medium flex items-center gap-2 transition-all ${
+                    isActive
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-stone-900 border border-stone-800 text-stone-300'
+                  }`}
+                >
+                  {tab.icon}
+                  <span className="truncate">{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Advanced Intelligence Studios */}
-          <div className="flex flex-col gap-2">
-            <div className="text-[11px] font-mono uppercase tracking-wider text-stone-400 px-1">
-              Intelligence Studios
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {onToggleGradeEngine && (
-                <button
-                  onClick={() => {
-                    closeAllStudios();
-                    onToggleGradeEngine();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className={`p-2.5 rounded-xl border text-left flex items-center gap-2.5 ${
-                    isGradeEngine ? 'bg-amber-950/70 border-amber-500 text-amber-200' : 'bg-stone-900/50 border-stone-800 text-stone-300'
-                  }`}
-                >
-                  <Scale className="w-4 h-4 text-amber-400 shrink-0" />
-                  <div className="min-w-0">
-                    <div className="text-xs font-semibold truncate">Dynamic Grade Rules</div>
-                    <div className="text-[10px] text-stone-400 truncate">Customer tolerances</div>
-                  </div>
-                </button>
-              )}
-
-              {onTogglePricingStudio && (
-                <button
-                  onClick={() => {
-                    closeAllStudios();
-                    onTogglePricingStudio();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className={`p-2.5 rounded-xl border text-left flex items-center gap-2.5 ${
-                    isPricingStudio ? 'bg-amber-950/70 border-amber-500 text-amber-200' : 'bg-stone-900/50 border-stone-800 text-stone-300'
-                  }`}
-                >
-                  <Tag className="w-4 h-4 text-amber-400 shrink-0" />
-                  <div className="min-w-0">
-                    <div className="text-xs font-semibold truncate">Dynamic Pricing</div>
-                    <div className="text-[10px] text-stone-400 truncate">Markdown optimizer</div>
-                  </div>
-                </button>
-              )}
-
-              {onToggleDemandRoutingStudio && (
-                <button
-                  onClick={() => {
-                    closeAllStudios();
-                    onToggleDemandRoutingStudio();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className={`p-2.5 rounded-xl border text-left flex items-center gap-2.5 ${
-                    isDemandRoutingStudio ? 'bg-indigo-950/70 border-indigo-500 text-indigo-200' : 'bg-stone-900/50 border-stone-800 text-stone-300'
-                  }`}
-                >
-                  <Route className="w-4 h-4 text-indigo-400 shrink-0" />
-                  <div className="min-w-0">
-                    <div className="text-xs font-semibold truncate">Demand &amp; Routing</div>
-                    <div className="text-[10px] text-stone-400 truncate">Inter-store transfers</div>
-                  </div>
-                </button>
-              )}
-
-              {onToggleSupplierScorecardStudio && (
-                <button
-                  onClick={() => {
-                    closeAllStudios();
-                    onToggleSupplierScorecardStudio();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className={`p-2.5 rounded-xl border text-left flex items-center gap-2.5 ${
-                    isSupplierScorecardStudio ? 'bg-cyan-950/70 border-cyan-500 text-cyan-200' : 'bg-stone-900/50 border-stone-800 text-stone-300'
-                  }`}
-                >
-                  <Award className="w-4 h-4 text-cyan-400 shrink-0" />
-                  <div className="min-w-0">
-                    <div className="text-xs font-semibold truncate">Supplier Forensics</div>
-                    <div className="text-[10px] text-stone-400 truncate">Scorecard &amp; diagnostics</div>
-                  </div>
-                </button>
-              )}
-
-              {onToggleDigitalTwin && (
-                <button
-                  onClick={() => {
-                    closeAllStudios();
-                    onToggleDigitalTwin();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className={`p-2.5 rounded-xl border text-left flex items-center gap-2.5 ${
-                    isDigitalTwin ? 'bg-emerald-950/70 border-emerald-500 text-emerald-200' : 'bg-stone-900/50 border-stone-800 text-stone-300'
-                  }`}
-                >
-                  <Activity className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <div className="min-w-0">
-                    <div className="text-xs font-semibold truncate">Shelf-Life Digital Twin</div>
-                    <div className="text-[10px] text-stone-400 truncate">Dynamic Arrhenius model</div>
-                  </div>
-                </button>
-              )}
-
-              {onToggleTelemetryStudio && (
-                <button
-                  onClick={() => {
-                    closeAllStudios();
-                    onToggleTelemetryStudio();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className={`p-2.5 rounded-xl border text-left flex items-center gap-2.5 ${
-                    isTelemetryStudio ? 'bg-cyan-950/70 border-cyan-500 text-cyan-200' : 'bg-stone-900/50 border-stone-800 text-stone-300'
-                  }`}
-                >
-                  <Radio className="w-4 h-4 text-cyan-400 shrink-0" />
-                  <div className="min-w-0">
-                    <div className="text-xs font-semibold truncate">Cold Chain Telemetry</div>
-                    <div className="text-[10px] text-stone-400 truncate">BLE loggers &amp; excursions</div>
-                  </div>
-                </button>
-              )}
-
-              {onToggleCommodityDatabase && (
-                <button
-                  onClick={() => {
-                    closeAllStudios();
-                    onToggleCommodityDatabase();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className={`p-2.5 rounded-xl border text-left flex items-center gap-2.5 ${
-                    isCommodityDatabase ? 'bg-purple-950/70 border-purple-500 text-purple-200' : 'bg-stone-900/50 border-stone-800 text-stone-300'
-                  }`}
-                >
-                  <Database className="w-4 h-4 text-purple-400 shrink-0" />
-                  <div className="min-w-0">
-                    <div className="text-xs font-semibold truncate">Produce Intelligence DB</div>
-                    <div className="text-[10px] text-stone-400 truncate">Variety cultivars</div>
-                  </div>
-                </button>
-              )}
-
-              {onToggleFeedbackStudio && (
-                <button
-                  onClick={() => {
-                    closeAllStudios();
-                    onToggleFeedbackStudio();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className={`p-2.5 rounded-xl border text-left flex items-center gap-2.5 ${
-                    isFeedbackStudio ? 'bg-purple-950/70 border-purple-500 text-purple-200' : 'bg-stone-900/50 border-stone-800 text-stone-300'
-                  }`}
-                >
-                  <History className="w-4 h-4 text-purple-400 shrink-0" />
-                  <div className="min-w-0">
-                    <div className="text-xs font-semibold truncate">Closed-Loop Learning</div>
-                    <div className="text-[10px] text-stone-400 truncate">Historical batch feedback</div>
-                  </div>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Operational Tools & Diagnostics */}
-          <div className="flex flex-col gap-2 pt-2 border-t border-stone-800">
-            <div className="text-[11px] font-mono uppercase tracking-wider text-stone-400 px-1">
-              Field &amp; Compliance Tools
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {onOpenMobileFieldModal && (
-                <button
-                  onClick={() => {
-                    onOpenMobileFieldModal();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="p-2.5 rounded-xl bg-stone-900 border border-stone-800 text-left flex flex-col gap-1 text-stone-200"
-                >
-                  <Smartphone className="w-4 h-4 text-lime-400" />
-                  <span className="text-xs font-semibold">Field Scout</span>
-                </button>
-              )}
-
-              {onOpenAlertsModal && (
-                <button
-                  onClick={() => {
-                    onOpenAlertsModal();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="p-2.5 rounded-xl bg-stone-900 border border-stone-800 text-left flex flex-col gap-1 text-stone-200"
-                >
-                  <Bell className="w-4 h-4 text-rose-400" />
-                  <span className="text-xs font-semibold">Alerts</span>
-                </button>
-              )}
-
-              {onOpenAuditModal && (
-                <button
-                  onClick={() => {
-                    onOpenAuditModal();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="p-2.5 rounded-xl bg-stone-900 border border-stone-800 text-left flex flex-col gap-1 text-stone-200"
-                >
-                  <History className="w-4 h-4 text-purple-400" />
-                  <span className="text-xs font-semibold">Audit Trail</span>
-                </button>
-              )}
-
-              <button
-                onClick={() => {
-                  onOpenMultiAgentModal();
-                  setIsMobileMenuOpen(false);
-                }}
-                className="p-2.5 rounded-xl bg-stone-900 border border-stone-800 text-left flex flex-col gap-1 text-stone-200"
-              >
-                <Cpu className="w-4 h-4 text-emerald-400" />
-                <span className="text-xs font-semibold">9 Swarm Agents</span>
-              </button>
-            </div>
+          <div className="pt-2 border-t border-stone-800 flex items-center justify-between text-xs text-stone-400">
+            <span>Gemini Vision Model:</span>
+            <span className="font-mono text-emerald-400 font-semibold">gemini-3.8-flash</span>
           </div>
         </div>
       )}

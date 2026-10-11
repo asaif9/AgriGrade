@@ -24,6 +24,8 @@ import {
   Check,
   RefreshCw,
   Cpu,
+  Download,
+  Upload,
 } from 'lucide-react';
 import type { AgriGradeReport, USDAMaturityStage } from '../types';
 import {
@@ -244,6 +246,49 @@ export const DynamicGradeEngineStudio: React.FC<DynamicGradeEngineStudioProps> =
       setTimeout(() => setSaveSuccess(false), 2000);
     } catch (err: any) {
       setJsonError(err.message || 'Invalid JSON format');
+    }
+  };
+
+  const handleExportRulesJson = () => {
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(rulesList, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', dataStr);
+    downloadAnchor.setAttribute('download', `agrigrade-commercial-rules-${Date.now()}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
+
+  const handleImportRulesFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const incomingRules: CommercialGradeRule[] = Array.isArray(parsed) ? parsed : [parsed];
+      if (incomingRules.length === 0) throw new Error('No valid rules found in file');
+
+      setRulesList((prev) => {
+        const combined = [...incomingRules, ...prev.filter((p) => !incomingRules.some((i) => i.id === p.id))];
+        return combined;
+      });
+      if (incomingRules[0]) {
+        onUpdateCustomRule(incomingRules[0]);
+        onSelectRuleId(incomingRules[0].id);
+      }
+
+      await fetch('/api/commercial-rules/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rules: incomingRules }),
+      });
+
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2000);
+    } catch (err: any) {
+      setJsonError('Failed to import rules: ' + (err.message || 'Invalid format'));
+    } finally {
+      e.target.value = '';
     }
   };
 
@@ -765,7 +810,28 @@ export const DynamicGradeEngineStudio: React.FC<DynamicGradeEngineStudioProps> =
                 Exact schema demonstrated in your brief: define commodity, market, grade_a tolerances, and grade_b windows.
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={handleExportRulesJson}
+                className="px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 text-[11px] font-mono flex items-center gap-1 border border-stone-700"
+                title="Export all commercial rules to JSON file"
+              >
+                <Download className="w-3 h-3 text-cyan-400" />
+                <span>Export JSON</span>
+              </button>
+              <label
+                className="px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 text-[11px] font-mono flex items-center gap-1 border border-stone-700 cursor-pointer"
+                title="Import commercial rules from JSON file"
+              >
+                <Upload className="w-3 h-3 text-amber-400" />
+                <span>Import JSON</span>
+                <input
+                  type="file"
+                  accept=".json,application/json"
+                  className="hidden"
+                  onChange={handleImportRulesFile}
+                />
+              </label>
               <button
                 onClick={() => {
                   const sampleJson = {

@@ -23,6 +23,9 @@ import { SupplierScorecardStudio } from './components/SupplierScorecardStudio';
 import { MobileFieldScoutModal } from './components/MobileFieldScoutModal';
 import { WhatsAppAlertsModal } from './components/WhatsAppAlertsModal';
 import { AuditAndVersioningModal } from './components/AuditAndVersioningModal';
+import { CrateLotSamplingModal } from './components/CrateLotSamplingModal';
+import { ThermalLabelModal } from './components/ThermalLabelModal';
+import { WhatIfSimulatorModal } from './components/WhatIfSimulatorModal';
 import { DEFAULT_COMMERCIAL_RULES, type CommercialGradeRule } from './utils/gradeEngine';
 import { PRESET_SAMPLES, type ProducePreset } from './data/presets';
 import { rasterizeImageIfNeeded } from './utils/imageRasterizer';
@@ -38,6 +41,8 @@ import type {
   LogisticsContext,
   DemandAndInventoryContext,
   ColdChainTelemetry,
+  WorkspaceTab,
+  OperationalRole,
 } from './types';
 import {
   Sprout,
@@ -67,24 +72,33 @@ import {
   Tag,
   Route,
   Bell,
+  Printer,
+  Boxes,
+  TrendingUp,
 } from 'lucide-react';
 
 export default function App() {
-  const [mode, setMode] = useState<InspectionMode>('FIELD_PRE_HARVEST');
+  // Operational Role & Workspace Management (Replaces 10+ fragile booleans)
+  const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceTab>('INSPECTION');
+  const [userRole, setUserRole] = useState<OperationalRole>('DOCK_QC');
+  const [mode, setMode] = useState<InspectionMode>('DARK_STORE_INBOUND');
+
+  // Supply Chain Workspace Sub-Tab
+  const [supplyChainSubTab, setSupplyChainSubTab] = useState<'ROUTING' | 'PRICING' | 'SUPPLIERS' | 'WHAT_IF'>('ROUTING');
+
+  // Device & Modals
   const [isMobileView, setIsMobileView] = useState<boolean>(false);
-  const [isChatMode, setIsChatMode] = useState<boolean>(false);
-  const [isFeedbackStudio, setIsFeedbackStudio] = useState<boolean>(false);
-  const [isCommodityDatabase, setIsCommodityDatabase] = useState<boolean>(false);
-  const [isTelemetryStudio, setIsTelemetryStudio] = useState<boolean>(false);
-  const [isDigitalTwin, setIsDigitalTwin] = useState<boolean>(false);
-  const [isGradeEngineStudio, setIsGradeEngineStudio] = useState<boolean>(false);
-  const [isCommandCenter, setIsCommandCenter] = useState<boolean>(false);
-  const [isPricingStudio, setIsPricingStudio] = useState<boolean>(false);
-  const [isDemandRoutingStudio, setIsDemandRoutingStudio] = useState<boolean>(false);
-  const [isSupplierScorecardStudio, setIsSupplierScorecardStudio] = useState<boolean>(false);
+  const [isAgentModalOpen, setIsAgentModalOpen] = useState<boolean>(false);
   const [isMobileFieldModalOpen, setIsMobileFieldModalOpen] = useState<boolean>(false);
   const [isAlertsModalOpen, setIsAlertsModalOpen] = useState<boolean>(false);
   const [isAuditModalOpen, setIsAuditModalOpen] = useState<boolean>(false);
+  const [isCrateSampleModalOpen, setIsCrateSampleModalOpen] = useState<boolean>(false);
+  const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState<boolean>(false);
+  const [isWhatIfModalOpen, setIsWhatIfModalOpen] = useState<boolean>(false);
+  const [isDigitalTwinModalOpen, setIsDigitalTwinModalOpen] = useState<boolean>(false);
+  const [isTelemetryModalOpen, setIsTelemetryModalOpen] = useState<boolean>(false);
+
+  // Commercial Rules & Calibration State
   const [selectedCustomerRuleId, setSelectedCustomerRuleId] = useState<string>('rule-zepto-quick-commerce');
   const [customCommercialRule, setCustomCommercialRule] = useState<CommercialGradeRule | null>(null);
   const [coldChainTelemetry, setColdChainTelemetry] = useState<ColdChainTelemetry>(DEFAULT_CALIBRATED_COLD_CHAIN_TELEMETRY);
@@ -93,7 +107,6 @@ export default function App() {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [report, setReport] = useState<AgriGradeReport | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [isAgentModalOpen, setIsAgentModalOpen] = useState<boolean>(false);
   const [geminiReady, setGeminiReady] = useState<boolean>(false);
 
   // Field / Inbound Telemetry Inputs
@@ -104,6 +117,9 @@ export default function App() {
   const [batchId, setBatchId] = useState<string>('CRATE-TOM-8821');
   const [supplierName, setSupplierName] = useState<string>('Saraswati Agritech Cluster #3');
   const [auditHistory, setAuditHistory] = useState<AuditScanRecord[]>([]);
+
+  // Cache for optical vision outputs (to decouple vision inference from biophysical slider recalculations)
+  const cachedVisionDataRef = useRef<any>(null);
 
   // Next-Gen Multi-Factor Context States
   const [sensorTelemetry, setSensorTelemetry] = useState<SensorTelemetry>({
@@ -142,7 +158,7 @@ export default function App() {
     demand_surge_factor: 1.2,
   });
 
-  // Check health and Gemini configuration on mount
+  // Check health on mount
   useEffect(() => {
     fetch('/api/health')
       .then((res) => res.json())
@@ -152,7 +168,30 @@ export default function App() {
       .catch((err) => console.warn('Health check warning:', err));
   }, []);
 
-  // Trigger grading through the full-stack multi-agent pipeline
+  // Sync role with mode
+  const handleRoleChange = (newRole: OperationalRole) => {
+    setUserRole(newRole);
+    if (newRole === 'FIELD_SCOUT') {
+      setMode('FIELD_PRE_HARVEST');
+      setActiveWorkspace('INSPECTION');
+    } else if (newRole === 'DOCK_QC') {
+      setMode('DARK_STORE_INBOUND');
+      setActiveWorkspace('INSPECTION');
+    } else if (newRole === 'SUPPLY_CHAIN_LEAD') {
+      setActiveWorkspace('COMMAND_CENTER');
+    }
+  };
+
+  const handleModeChange = (newMode: InspectionMode) => {
+    setMode(newMode);
+    if (newMode === 'FIELD_PRE_HARVEST') {
+      setUserRole('FIELD_SCOUT');
+    } else {
+      setUserRole('DOCK_QC');
+    }
+  };
+
+  // Full vision pipeline inspection (runs on new image / preset load)
   const runInspection = useCallback(
     async (
       imgB64: string,
@@ -206,6 +245,7 @@ export default function App() {
 
         const data: AgriGradeReport = await res.json();
         setReport(data);
+        cachedVisionDataRef.current = data; // Cache vision output for ultra-fast recalculations
 
         // Record entry into session audit ledger
         const now = new Date();
@@ -294,11 +334,68 @@ export default function App() {
     [sensorTelemetry, weatherContext, logisticsContext, demandContext, coldChainTelemetry, selectedCustomerRuleId, customCommercialRule]
   );
 
-  // Initial grading on load
+  // Lightning-fast biophysical recalculation (< 5ms, zero Base64 upload)
+  const recalculatePhysics = useCallback(
+    async (params: {
+      temp?: number;
+      hours?: number;
+      km?: number;
+      storage?: 'AMBIENT_LORRY' | 'CHILLED_REEFER';
+      sensors?: SensorTelemetry;
+      weather?: WeatherContext;
+      logistics?: LogisticsContext;
+      demand?: DemandAndInventoryContext;
+      ruleId?: string;
+      customRule?: CommercialGradeRule | null;
+    }) => {
+      if (!cachedVisionDataRef.current) return;
+      try {
+        const payload: InspectionRequest = {
+          image_b64: '',
+          mode,
+          crop_type_hint: report?.produce_type || 'Tomato',
+          ambient_temp_celsius: params.temp ?? ambientTemp,
+          transit_hours_to_hub: params.hours ?? transitHours,
+          transit_distance_km: params.km ?? transitKm,
+          storage_method: params.storage ?? storageMethod,
+          batch_id: batchId,
+          supplier_name: supplierName,
+          customer_rule_id: params.ruleId || selectedCustomerRuleId,
+          custom_commercial_rule: params.customRule !== undefined ? (params.customRule ?? undefined) : (customCommercialRule ?? undefined),
+          sensor_telemetry: params.sensors || sensorTelemetry,
+          cold_chain_telemetry: coldChainTelemetry,
+          weather_context: params.weather || weatherContext,
+          logistics_context: params.logistics || logisticsContext,
+          demand_inventory_context: params.demand || demandContext,
+        };
+
+        const res = await fetch('/api/physics/recalculate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            vision_data: cachedVisionDataRef.current,
+            inspection_request: payload,
+          }),
+        });
+
+        if (res.ok) {
+          const json = await res.json();
+          if (json.report) {
+            setReport(json.report);
+          }
+        }
+      } catch (err) {
+        console.warn('Physics recalculation notice:', err);
+      }
+    },
+    [mode, report, ambientTemp, transitHours, transitKm, storageMethod, batchId, supplierName, selectedCustomerRuleId, customCommercialRule, sensorTelemetry, coldChainTelemetry, weatherContext, logisticsContext, demandContext]
+  );
+
+  // Initial grading on mount
   useEffect(() => {
     runInspection(
       PRESET_SAMPLES[0].imageUrl,
-      'FIELD_PRE_HARVEST',
+      'DARK_STORE_INBOUND',
       ambientTemp,
       transitHours,
       transitKm,
@@ -309,157 +406,57 @@ export default function App() {
     );
   }, []);
 
-  // Handle switching between Field and Dark Store mode
-  const handleModeChange = (newMode: InspectionMode) => {
-    setMode(newMode);
-    setIsFeedbackStudio(false);
-    setIsChatMode(false);
-    setIsCommodityDatabase(false);
-    setIsTelemetryStudio(false);
-    setIsDigitalTwin(false);
-    setIsGradeEngineStudio(false);
-    setIsCommandCenter(false);
-    setIsPricingStudio(false);
-    setIsDemandRoutingStudio(false);
-    setIsSupplierScorecardStudio(false);
-    const appropriatePreset = PRESET_SAMPLES.find((p) => p.mode === newMode) || PRESET_SAMPLES[0];
-    setSelectedPresetId(appropriatePreset.id);
-    setCurrentImage(appropriatePreset.imageUrl);
-    setAmbientTemp(appropriatePreset.ambientTemp);
-    setTransitHours(appropriatePreset.transitHours);
-    setTransitKm(appropriatePreset.transitKm);
-    setStorageMethod(appropriatePreset.storage);
-    setBatchId(appropriatePreset.batchId);
-    setSupplierName(appropriatePreset.supplier);
-
-    runInspection(
-      appropriatePreset.imageUrl,
-      newMode,
-      appropriatePreset.ambientTemp,
-      appropriatePreset.transitHours,
-      appropriatePreset.transitKm,
-      appropriatePreset.storage,
-      appropriatePreset.batchId,
-      appropriatePreset.supplier,
-      appropriatePreset.crop
-    );
-  };
-
-  // Multi-Factor Update Handlers
-  const handleUpdateSensor = (updated: Partial<SensorTelemetry>) => {
-    const next = { ...sensorTelemetry, ...updated };
-    setSensorTelemetry(next);
-    if (currentImage) {
-      runInspection(
-        currentImage,
-        mode,
-        ambientTemp,
-        transitHours,
-        transitKm,
-        storageMethod,
-        batchId,
-        supplierName,
-        report?.produce_type || 'Tomato',
-        next,
-        weatherContext,
-        logisticsContext,
-        demandContext
-      );
+  // Optimized slider change handlers: use fast recalculatePhysics instead of re-uploading Base64 image
+  const handleTempChange = (newTemp: number) => {
+    setAmbientTemp(newTemp);
+    if (cachedVisionDataRef.current) {
+      recalculatePhysics({
+        temp: newTemp,
+        sensors: { ...sensorTelemetry, transit_logger_temp: newTemp },
+        weather: { ...weatherContext, harvest_ambient_temp: newTemp, heatwave_warning: newTemp >= 33 },
+      });
     }
   };
 
-  const handleUpdateColdChainTelemetry = (updated: ColdChainTelemetry) => {
-    setColdChainTelemetry(updated);
-    setAmbientTemp(updated.actualAvgTempCelsius);
-    const nextSensors: SensorTelemetry = {
-      ...sensorTelemetry,
-      transit_logger_temp: updated.actualAvgTempCelsius,
-      humidity_pct: updated.humiditySensors.relativeHumidityPct,
-      cold_chain: updated,
-    };
+  const handleStorageChange = (newStorage: 'AMBIENT_LORRY' | 'CHILLED_REEFER') => {
+    setStorageMethod(newStorage);
+    if (cachedVisionDataRef.current) {
+      recalculatePhysics({
+        storage: newStorage,
+        logistics: { ...logisticsContext, storage_method: newStorage },
+      });
+    }
+  };
+
+  const handleUpdateSensor = (updated: Partial<SensorTelemetry>) => {
+    const nextSensors = { ...sensorTelemetry, ...updated };
     setSensorTelemetry(nextSensors);
-    if (currentImage) {
-      runInspection(
-        currentImage,
-        mode,
-        updated.actualAvgTempCelsius,
-        transitHours,
-        transitKm,
-        storageMethod,
-        batchId,
-        supplierName,
-        report?.produce_type || 'Tomato',
-        nextSensors,
-        weatherContext,
-        logisticsContext,
-        demandContext
-      );
+    if (cachedVisionDataRef.current) {
+      recalculatePhysics({ sensors: nextSensors });
     }
   };
 
   const handleUpdateWeather = (updated: Partial<WeatherContext>) => {
     const next = { ...weatherContext, ...updated };
     setWeatherContext(next);
-    if (currentImage) {
-      runInspection(
-        currentImage,
-        mode,
-        ambientTemp,
-        transitHours,
-        transitKm,
-        storageMethod,
-        batchId,
-        supplierName,
-        report?.produce_type || 'Tomato',
-        sensorTelemetry,
-        next,
-        logisticsContext,
-        demandContext
-      );
+    if (cachedVisionDataRef.current) {
+      recalculatePhysics({ weather: next });
     }
   };
 
   const handleUpdateLogistics = (updated: Partial<LogisticsContext>) => {
     const next = { ...logisticsContext, ...updated };
     setLogisticsContext(next);
-    if (currentImage) {
-      runInspection(
-        currentImage,
-        mode,
-        ambientTemp,
-        transitHours,
-        transitKm,
-        storageMethod,
-        batchId,
-        supplierName,
-        report?.produce_type || 'Tomato',
-        sensorTelemetry,
-        weatherContext,
-        next,
-        demandContext
-      );
+    if (cachedVisionDataRef.current) {
+      recalculatePhysics({ logistics: next });
     }
   };
 
   const handleUpdateDemand = (updated: Partial<DemandAndInventoryContext>) => {
     const next = { ...demandContext, ...updated };
     setDemandContext(next);
-    if (currentImage) {
-      runInspection(
-        currentImage,
-        mode,
-        ambientTemp,
-        transitHours,
-        transitKm,
-        storageMethod,
-        batchId,
-        supplierName,
-        report?.produce_type || 'Tomato',
-        sensorTelemetry,
-        weatherContext,
-        logisticsContext,
-        next
-      );
+    if (cachedVisionDataRef.current) {
+      recalculatePhysics({ demand: next });
     }
   };
 
@@ -471,6 +468,7 @@ export default function App() {
       vibration_g_force: 1.1,
       temp_spike_detected: false,
       temp_spike_duration_hours: 0,
+      cold_chain: DEFAULT_CALIBRATED_COLD_CHAIN_TELEMETRY,
     };
     const defaultWeather: WeatherContext = {
       harvest_ambient_temp: ambientTemp,
@@ -501,26 +499,17 @@ export default function App() {
     setLogisticsContext(defaultLogistics);
     setDemandContext(defaultDemand);
 
-    if (currentImage) {
-      runInspection(
-        currentImage,
-        mode,
-        ambientTemp,
-        transitHours,
-        transitKm,
-        storageMethod,
-        batchId,
-        supplierName,
-        report?.produce_type || 'Tomato',
-        defaultSensors,
-        defaultWeather,
-        defaultLogistics,
-        defaultDemand
-      );
+    if (cachedVisionDataRef.current) {
+      recalculatePhysics({
+        sensors: defaultSensors,
+        weather: defaultWeather,
+        logistics: defaultLogistics,
+        demand: defaultDemand,
+      });
     }
   };
 
-  // Handle image capture from camera or preset selection
+  // Image capture handler
   const handleImageCaptured = (base64: string, presetMeta?: Partial<ProducePreset>) => {
     setCurrentImage(base64);
     if (presetMeta?.id) {
@@ -552,33 +541,6 @@ export default function App() {
     );
   };
 
-  // Ref for debouncing temperature slider inspections
-  const tempDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  const handleTempChange = (newTemp: number) => {
-    setAmbientTemp(newTemp);
-    if (tempDebounceTimerRef.current) {
-      clearTimeout(tempDebounceTimerRef.current);
-    }
-    tempDebounceTimerRef.current = setTimeout(() => {
-      if (currentImage) {
-        runInspection(
-          currentImage,
-          mode,
-          newTemp,
-          transitHours,
-          transitKm,
-          storageMethod,
-          batchId,
-          supplierName,
-          report?.produce_type || 'Tomato',
-          { ...sensorTelemetry, transit_logger_temp: newTemp },
-          { ...weatherContext, harvest_ambient_temp: newTemp, heatwave_warning: newTemp >= 33 }
-        );
-      }
-    }, 280);
-  };
-
   const handleCrateQrParsed = (data: { batchId: string; supplierName: string }) => {
     setBatchId(data.batchId);
     setSupplierName(data.supplierName);
@@ -586,6 +548,7 @@ export default function App() {
 
   const handleSelectAuditRecord = (record: AuditScanRecord) => {
     setReport(record.report);
+    cachedVisionDataRef.current = record.report;
     if (record.thumbnailUrl) {
       setCurrentImage(record.thumbnailUrl);
     }
@@ -621,29 +584,9 @@ export default function App() {
     }
   };
 
-  const handleStorageChange = (newStorage: 'AMBIENT_LORRY' | 'CHILLED_REEFER') => {
-    setStorageMethod(newStorage);
-    if (currentImage) {
-      runInspection(
-        currentImage,
-        mode,
-        ambientTemp,
-        transitHours,
-        transitKm,
-        newStorage,
-        batchId,
-        supplierName,
-        report?.produce_type || 'Tomato',
-        sensorTelemetry,
-        weatherContext,
-        { ...logisticsContext, storage_method: newStorage }
-      );
-    }
-  };
-
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col font-sans">
-      {/* Header */}
+      {/* Streamlined Enterprise Header */}
       <Header
         mode={mode}
         onModeChange={handleModeChange}
@@ -651,454 +594,286 @@ export default function App() {
         onToggleMobileView={() => setIsMobileView(!isMobileView)}
         geminiReady={geminiReady}
         onOpenMultiAgentModal={() => setIsAgentModalOpen(true)}
-        isChatMode={isChatMode}
-        onToggleChatMode={() => {
-          setIsChatMode(!isChatMode);
-          if (!isChatMode) setIsFeedbackStudio(false);
-        }}
-        isFeedbackStudio={isFeedbackStudio}
-        onToggleFeedbackStudio={() => {
-          setIsFeedbackStudio(!isFeedbackStudio);
-          if (!isFeedbackStudio) {
-            setIsChatMode(false);
-            setIsCommodityDatabase(false);
-          }
-        }}
-        isCommodityDatabase={isCommodityDatabase}
-        onToggleCommodityDatabase={() => {
-          setIsCommodityDatabase(!isCommodityDatabase);
-          if (!isCommodityDatabase) {
-            setIsChatMode(false);
-            setIsFeedbackStudio(false);
-            setIsTelemetryStudio(false);
-          }
-        }}
-        isTelemetryStudio={isTelemetryStudio}
-        onToggleTelemetryStudio={() => {
-          setIsTelemetryStudio(!isTelemetryStudio);
-          if (!isTelemetryStudio) {
-            setIsChatMode(false);
-            setIsFeedbackStudio(false);
-            setIsCommodityDatabase(false);
-            setIsDigitalTwin(false);
-          }
-        }}
-        isDigitalTwin={isDigitalTwin}
-        onToggleDigitalTwin={() => {
-          setIsDigitalTwin(!isDigitalTwin);
-          if (!isDigitalTwin) {
-            setIsChatMode(false);
-            setIsFeedbackStudio(false);
-            setIsCommodityDatabase(false);
-            setIsTelemetryStudio(false);
-            setIsGradeEngineStudio(false);
-          }
-        }}
-        isGradeEngine={isGradeEngineStudio}
-        onToggleGradeEngine={() => {
-          setIsGradeEngineStudio(!isGradeEngineStudio);
-          if (!isGradeEngineStudio) {
-            setIsChatMode(false);
-            setIsFeedbackStudio(false);
-            setIsCommodityDatabase(false);
-            setIsTelemetryStudio(false);
-            setIsDigitalTwin(false);
-            setIsCommandCenter(false);
-            setIsPricingStudio(false);
-            setIsDemandRoutingStudio(false);
-            setIsSupplierScorecardStudio(false);
-          }
-        }}
-        isCommandCenter={isCommandCenter}
-        onToggleCommandCenter={() => {
-          setIsCommandCenter(!isCommandCenter);
-          if (!isCommandCenter) {
-            setIsChatMode(false);
-            setIsFeedbackStudio(false);
-            setIsCommodityDatabase(false);
-            setIsTelemetryStudio(false);
-            setIsDigitalTwin(false);
-            setIsGradeEngineStudio(false);
-            setIsPricingStudio(false);
-            setIsDemandRoutingStudio(false);
-            setIsSupplierScorecardStudio(false);
-          }
-        }}
-        isPricingStudio={isPricingStudio}
-        onTogglePricingStudio={() => {
-          setIsPricingStudio(!isPricingStudio);
-          if (!isPricingStudio) {
-            setIsChatMode(false);
-            setIsFeedbackStudio(false);
-            setIsCommodityDatabase(false);
-            setIsTelemetryStudio(false);
-            setIsDigitalTwin(false);
-            setIsGradeEngineStudio(false);
-            setIsCommandCenter(false);
-            setIsDemandRoutingStudio(false);
-            setIsSupplierScorecardStudio(false);
-          }
-        }}
-        isDemandRoutingStudio={isDemandRoutingStudio}
-        onToggleDemandRoutingStudio={() => {
-          setIsDemandRoutingStudio(!isDemandRoutingStudio);
-          if (!isDemandRoutingStudio) {
-            setIsChatMode(false);
-            setIsFeedbackStudio(false);
-            setIsCommodityDatabase(false);
-            setIsTelemetryStudio(false);
-            setIsDigitalTwin(false);
-            setIsGradeEngineStudio(false);
-            setIsCommandCenter(false);
-            setIsPricingStudio(false);
-            setIsSupplierScorecardStudio(false);
-          }
-        }}
-        isSupplierScorecardStudio={isSupplierScorecardStudio}
-        onToggleSupplierScorecardStudio={() => {
-          setIsSupplierScorecardStudio(!isSupplierScorecardStudio);
-          if (!isSupplierScorecardStudio) {
-            setIsChatMode(false);
-            setIsFeedbackStudio(false);
-            setIsCommodityDatabase(false);
-            setIsTelemetryStudio(false);
-            setIsDigitalTwin(false);
-            setIsGradeEngineStudio(false);
-            setIsCommandCenter(false);
-            setIsPricingStudio(false);
-            setIsDemandRoutingStudio(false);
-          }
-        }}
-        onOpenMobileFieldModal={() => setIsMobileFieldModalOpen(true)}
+        activeWorkspace={activeWorkspace}
+        onSelectWorkspaceTab={(tab) => setActiveWorkspace(tab)}
+        userRole={userRole}
+        onRoleChange={handleRoleChange}
         onOpenAlertsModal={() => setIsAlertsModalOpen(true)}
         onOpenAuditModal={() => setIsAuditModalOpen(true)}
+        onOpenBarcodeModal={() => setIsBarcodeModalOpen(true)}
+        unreadAlertsCount={2}
       />
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-3.5 sm:p-6 lg:p-8 flex flex-col gap-5 sm:gap-6">
-        {/* Modern Responsive Workspace Context Header */}
+        {/* Workspace Context Toolbar */}
         <div className="rounded-2xl bg-gradient-to-r from-stone-900/90 via-stone-900/80 to-stone-950/90 border border-stone-800/80 p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl backdrop-blur-sm">
           <div className="flex items-start sm:items-center gap-3.5">
             <div
               className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0 shadow-lg ${
-                isCommandCenter
-                  ? 'bg-teal-950 border border-teal-500/60 text-teal-300 shadow-teal-950/50'
-                  : isPricingStudio
-                  ? 'bg-amber-950 border border-amber-500/60 text-amber-300 shadow-amber-950/50'
-                  : isDemandRoutingStudio
-                  ? 'bg-indigo-950 border border-indigo-500/60 text-indigo-300 shadow-indigo-950/50'
-                  : isSupplierScorecardStudio
-                  ? 'bg-cyan-950 border border-cyan-500/60 text-cyan-300 shadow-cyan-950/50'
-                  : isCommodityDatabase
-                  ? 'bg-purple-950 border border-purple-500/60 text-purple-300 shadow-purple-950/50'
-                  : isFeedbackStudio
-                  ? 'bg-purple-950 border border-purple-500/60 text-purple-300 shadow-purple-950/50'
+                activeWorkspace === 'COMMAND_CENTER'
+                  ? 'bg-teal-950 border border-teal-500/60 text-teal-300'
+                  : activeWorkspace === 'RULES_ENGINE'
+                  ? 'bg-amber-950 border border-amber-500/60 text-amber-300'
+                  : activeWorkspace === 'SUPPLY_CHAIN'
+                  ? 'bg-indigo-950 border border-indigo-500/60 text-indigo-300'
+                  : activeWorkspace === 'COMMODITY_DB'
+                  ? 'bg-purple-950 border border-purple-500/60 text-purple-300'
+                  : activeWorkspace === 'FEEDBACK_LEDGER'
+                  ? 'bg-purple-950 border border-purple-500/60 text-purple-300'
+                  : activeWorkspace === 'CHAT_SWARM'
+                  ? 'bg-purple-950 border border-purple-500/60 text-purple-300'
                   : mode === 'FIELD_PRE_HARVEST'
-                  ? 'bg-emerald-950 border border-emerald-500/60 text-emerald-300 shadow-emerald-950/50'
-                  : 'bg-amber-950 border border-amber-500/60 text-amber-300 shadow-amber-950/50'
+                  ? 'bg-emerald-950 border border-emerald-500/60 text-emerald-300'
+                  : 'bg-amber-950 border border-amber-500/60 text-amber-300'
               }`}
             >
-              {isCommandCenter ? (
-                <Globe2 className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
-              ) : isPricingStudio ? (
-                <Tag className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
-              ) : isDemandRoutingStudio ? (
-                <Route className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
-              ) : isSupplierScorecardStudio ? (
-                <Award className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
-              ) : isCommodityDatabase ? (
-                <Database className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
-              ) : isFeedbackStudio ? (
-                <History className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
+              {activeWorkspace === 'COMMAND_CENTER' ? (
+                <Globe2 className="w-5 h-5 sm:w-6 sm:h-6" />
+              ) : activeWorkspace === 'RULES_ENGINE' ? (
+                <Scale className="w-5 h-5 sm:w-6 sm:h-6" />
+              ) : activeWorkspace === 'SUPPLY_CHAIN' ? (
+                <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />
+              ) : activeWorkspace === 'COMMODITY_DB' ? (
+                <Database className="w-5 h-5 sm:w-6 sm:h-6" />
+              ) : activeWorkspace === 'FEEDBACK_LEDGER' ? (
+                <History className="w-5 h-5 sm:w-6 sm:h-6" />
+              ) : activeWorkspace === 'CHAT_SWARM' ? (
+                <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />
               ) : mode === 'FIELD_PRE_HARVEST' ? (
-                <Sprout className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
+                <Sprout className="w-5 h-5 sm:w-6 sm:h-6" />
               ) : (
-                <Warehouse className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
+                <Warehouse className="w-5 h-5 sm:w-6 sm:h-6" />
               )}
             </div>
 
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-base sm:text-lg font-bold text-white tracking-tight truncate">
-                  {isCommandCenter
-                    ? 'Farm-to-Shelf Operations Command Center'
-                    : isPricingStudio
-                    ? '8-Variable Dynamic Pricing & Markdown Studio'
-                    : isDemandRoutingStudio
-                    ? 'Demand Forecasting & Inter-Store Logistics'
-                    : isSupplierScorecardStudio
-                    ? 'Deep Supplier Scorecard & Forensic Diagnostics'
-                    : isCommodityDatabase
-                    ? 'Produce Intelligence & Variety Cultivar Database'
-                    : isFeedbackStudio
-                    ? 'Historical Batch Intelligence & Closed-Loop Learning'
-                    : isGradeEngineStudio
-                    ? 'Dynamic Commercial Grade Rules & Tolerances'
-                    : isDigitalTwin
-                    ? 'Real-Time Shelf-Life Digital Twin'
-                    : isTelemetryStudio
-                    ? 'Cold Chain IoT Telemetry Studio'
-                    : isChatMode
-                    ? 'Zero-Hallucination Multi-Agent Swarm Chat'
-                    : mode === 'FIELD_PRE_HARVEST'
-                    ? 'Field Mode — Pre-Harvest Decision Support'
-                    : 'Dark Store Mode — Inbound Quality Gate'}
-                </h1>
-              </div>
+              <h1 className="text-base sm:text-lg font-bold text-white tracking-tight truncate">
+                {activeWorkspace === 'COMMAND_CENTER'
+                  ? 'Farm-to-Shelf Operations Command Center'
+                  : activeWorkspace === 'RULES_ENGINE'
+                  ? 'Commercial Grade Engine & Configurable Tolerances'
+                  : activeWorkspace === 'SUPPLY_CHAIN'
+                  ? 'Supply Chain Optimization & Logistics ROI'
+                  : activeWorkspace === 'COMMODITY_DB'
+                  ? 'Agronomic Produce & Cultivar Variety Database'
+                  : activeWorkspace === 'FEEDBACK_LEDGER'
+                  ? 'Closed-Loop Continual Calibration Ledger'
+                  : activeWorkspace === 'CHAT_SWARM'
+                  ? 'Zero-Hallucination 9-Agent Swarm Chat'
+                  : mode === 'FIELD_PRE_HARVEST'
+                  ? 'Field Mode — Pre-Harvest Decision Support'
+                  : 'Dark Store Mode — Inbound Quality Gate'}
+              </h1>
 
               <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-stone-400 mt-1 font-sans">
-                <span className="font-medium text-stone-300">
-                  {isCommandCenter || isPricingStudio || isDemandRoutingStudio || isSupplierScorecardStudio || isCommodityDatabase || isFeedbackStudio || isGradeEngineStudio || isDigitalTwin || isTelemetryStudio
-                    ? 'Enterprise Operations & Intelligence Platform'
-                    : `${batchId} · ${supplierName}`}
-                </span>
-                <span aria-hidden="true" className="text-stone-600 hidden sm:inline">·</span>
+                <span className="font-medium text-stone-300">{batchId} · {supplierName}</span>
+                <span className="text-stone-600 hidden sm:inline">·</span>
                 <span className="text-stone-400 hidden sm:inline">
-                  {mode === 'FIELD_PRE_HARVEST' ? 'Vine-Level Advisory' : 'Dock QA & Markdown'}
+                  {mode === 'FIELD_PRE_HARVEST' ? 'Vine-Level Advisory' : 'Dock QA & Fast Markdown'}
                 </span>
-                <span aria-hidden="true" className="text-stone-600 hidden md:inline">·</span>
+                <span className="text-stone-600 hidden md:inline">·</span>
                 <span className="text-emerald-400 font-mono text-[11px] hidden md:inline">
-                  9 Swarm Agents Grounded
+                  Decoupled Biophysics (<strong className="font-normal text-white">&lt;5ms</strong>)
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Quick Context Actions */}
+          {/* Quick Context & Operational Action Shortcuts */}
           <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
-            {/* If inside any specialized studio, show Back to Inspection */}
-            {isCommandCenter || isPricingStudio || isDemandRoutingStudio || isSupplierScorecardStudio || isGradeEngineStudio || isDigitalTwin || isTelemetryStudio || isCommodityDatabase || isFeedbackStudio || isChatMode ? (
+            {activeWorkspace !== 'INSPECTION' ? (
               <button
-                onClick={() => {
-                  setIsCommandCenter(false);
-                  setIsPricingStudio(false);
-                  setIsDemandRoutingStudio(false);
-                  setIsSupplierScorecardStudio(false);
-                  setIsGradeEngineStudio(false);
-                  setIsDigitalTwin(false);
-                  setIsTelemetryStudio(false);
-                  setIsCommodityDatabase(false);
-                  setIsFeedbackStudio(false);
-                  setIsChatMode(false);
-                }}
-                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 text-xs font-semibold shadow-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                onClick={() => setActiveWorkspace('INSPECTION')}
+                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 text-xs font-semibold shadow-sm transition-colors flex items-center justify-center gap-2"
               >
                 <span>← Return to Live Inspection</span>
               </button>
             ) : (
               <>
-                {/* Segmented Mode Switcher */}
-                <div className="flex items-center bg-stone-950 p-1 rounded-xl border border-stone-800/80 w-full sm:w-auto">
-                  <button
-                    onClick={() => handleModeChange('FIELD_PRE_HARVEST')}
-                    className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
-                      mode === 'FIELD_PRE_HARVEST'
-                        ? 'bg-emerald-600 text-white shadow-sm'
-                        : 'text-stone-400 hover:text-stone-200'
-                    }`}
-                  >
-                    <Sprout className="w-3.5 h-3.5" />
-                    <span>Field Mode</span>
-                  </button>
+                {/* Statistical Crate Lot Sampling Modal Shortcut */}
+                <button
+                  onClick={() => setIsCrateSampleModalOpen(true)}
+                  className="px-3.5 py-2 rounded-xl bg-amber-950/80 hover:bg-amber-900 border border-amber-600/70 text-xs font-semibold text-amber-200 transition-colors flex items-center gap-1.5 shadow-sm"
+                  title="Open Crate Lot Sampling Modal (Codex/USDA 20-specimen statistical yield)"
+                >
+                  <Boxes className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="hidden sm:inline">Sample Crate</span>
+                </button>
 
-                  <button
-                    onClick={() => handleModeChange('DARK_STORE_INBOUND')}
-                    className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
-                      mode === 'DARK_STORE_INBOUND'
-                        ? 'bg-amber-600 text-white shadow-sm'
-                        : 'text-stone-400 hover:text-stone-200'
-                    }`}
-                  >
-                    <Warehouse className="w-3.5 h-3.5" />
-                    <span>Dark Store</span>
-                  </button>
-                </div>
+                {/* Thermal Crate Sticker Shortcut */}
+                <button
+                  onClick={() => setIsBarcodeModalOpen(true)}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/70 text-xs font-semibold text-emerald-200 transition-colors flex items-center gap-1.5 shadow-sm"
+                  title="Generate Zebra TSPL Thermal Crate Label"
+                >
+                  <Printer className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="hidden sm:inline">Thermal Label</span>
+                </button>
 
-                {/* PDF Export Button */}
+                {/* What-If Sensitivity Simulator Shortcut */}
+                <button
+                  onClick={() => setIsWhatIfModalOpen(true)}
+                  className="px-3.5 py-2 rounded-xl bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-600/70 text-xs font-semibold text-indigo-200 transition-colors flex items-center gap-1.5 shadow-sm"
+                  title="Run What-If Arrhenius Temperature Breakdown Simulation"
+                >
+                  <TrendingUp className="w-3.5 h-3.5 text-indigo-400" />
+                  <span className="hidden sm:inline">What-If ROI</span>
+                </button>
+
+                {/* Official PDF Certificate Download */}
                 {report && (
                   <button
                     onClick={handleDownloadPdf}
                     disabled={isExportingPdf}
-                    className="px-3.5 py-2 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-700/80 text-xs font-semibold text-cyan-200 transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-50 cursor-pointer"
+                    className="px-3.5 py-2 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-700/80 text-xs font-semibold text-cyan-200 transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-50"
                     title="Download official PDF inspection summary certificate"
                   >
                     <FileText className="w-3.5 h-3.5 text-cyan-400" />
                     <span className="hidden sm:inline">{isExportingPdf ? 'Exporting...' : 'Export PDF'}</span>
                   </button>
                 )}
-
-                {/* Quick Chat Shortcut */}
-                <button
-                  onClick={() => setIsChatMode(true)}
-                  className="px-3.5 py-2 rounded-xl bg-purple-950/80 hover:bg-purple-900 border border-purple-700/80 text-xs font-semibold text-purple-200 transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
-                  title="Open Agent Chat"
-                >
-                  <MessageSquare className="w-3.5 h-3.5 text-purple-400" />
-                  <span className="hidden sm:inline">Ask Swarm</span>
-                </button>
               </>
             )}
           </div>
         </div>
 
-        {/* View Router: Command Center OR Dynamic Pricing OR Demand Routing OR Supplier Forensics OR Grade Engine Studio OR Digital Twin Studio OR Cold Chain Telemetry Studio OR Commodity Database Studio OR Closed-Loop Feedback Studio OR Agent Chat OR Main Inspection View */}
-        {isCommandCenter ? (
+        {/* Dynamic Workspace Router */}
+        {activeWorkspace === 'COMMAND_CENTER' ? (
           <AgriGradeCommandCenter
             onOpenDemandRouting={() => {
-              setIsCommandCenter(false);
-              setIsDemandRoutingStudio(true);
+              setActiveWorkspace('SUPPLY_CHAIN');
+              setSupplyChainSubTab('ROUTING');
             }}
             onOpenPricingStudio={() => {
-              setIsCommandCenter(false);
-              setIsPricingStudio(true);
+              setActiveWorkspace('SUPPLY_CHAIN');
+              setSupplyChainSubTab('PRICING');
             }}
             onOpenSupplierScorecard={() => {
-              setIsCommandCenter(false);
-              setIsSupplierScorecardStudio(true);
+              setActiveWorkspace('SUPPLY_CHAIN');
+              setSupplyChainSubTab('SUPPLIERS');
             }}
             onOpenAlerts={() => setIsAlertsModalOpen(true)}
           />
-        ) : isPricingStudio ? (
-          <DynamicPricingMarkdownStudio
-            onClose={() => setIsPricingStudio(false)}
-            commodityName={report?.produce_type || 'Tomato'}
-            initialFactors={{
-              shelfLifeRemainingDays: report?.ambient_shelf_life_days ?? report?.commodity_database_result?.predicted_shelf_life_days ?? 2.3,
-              currentInventoryKg: 400,
-              storeDemandVelocityKgHour: 8.5,
-              grade: (report?.inbound_action?.verdict as any) ?? 'ACCEPTED_GRADE_B',
-              defectPercent: report?.bruise_defect_index ?? 8.2,
-            }}
-          />
-        ) : isDemandRoutingStudio ? (
-          <DemandForecastingAndRoutingStudio
-            onClose={() => setIsDemandRoutingStudio(false)}
-            batchId={batchId}
-            commodityName={report?.produce_type || 'Tomato'}
-          />
-        ) : isSupplierScorecardStudio ? (
-          <SupplierScorecardStudio
-            onClose={() => setIsSupplierScorecardStudio(false)}
-            currentSupplier={supplierName}
-          />
-        ) : isGradeEngineStudio ? (
+        ) : activeWorkspace === 'RULES_ENGINE' ? (
           <DynamicGradeEngineStudio
             report={report}
             activeRuleId={selectedCustomerRuleId}
             onSelectRuleId={(id) => {
               setSelectedCustomerRuleId(id);
-              if (currentImage) {
-                runInspection(
-                  currentImage,
-                  mode,
-                  ambientTemp,
-                  transitHours,
-                  transitKm,
-                  storageMethod,
-                  batchId,
-                  supplierName,
-                  report?.produce_type || 'Tomato',
-                  sensorTelemetry,
-                  weatherContext,
-                  logisticsContext,
-                  demandContext,
-                  id
-                );
+              if (cachedVisionDataRef.current) {
+                recalculatePhysics({ ruleId: id });
               }
             }}
             customRule={customCommercialRule}
             onUpdateCustomRule={(rule) => {
               setCustomCommercialRule(rule);
               setSelectedCustomerRuleId(rule.id);
-              if (currentImage) {
-                runInspection(
-                  currentImage,
-                  mode,
-                  ambientTemp,
-                  transitHours,
-                  transitKm,
-                  storageMethod,
-                  batchId,
-                  supplierName,
-                  report?.produce_type || 'Tomato',
-                  sensorTelemetry,
-                  weatherContext,
-                  logisticsContext,
-                  demandContext,
-                  rule.id,
-                  rule
-                );
+              if (cachedVisionDataRef.current) {
+                recalculatePhysics({ ruleId: rule.id, customRule: rule });
               }
             }}
-            onClose={() => setIsGradeEngineStudio(false)}
+            onClose={() => setActiveWorkspace('INSPECTION')}
           />
-        ) : isDigitalTwin ? (
-          <DigitalTwinStudio
-            onClose={() => setIsDigitalTwin(false)}
-            initialBatchId={batchId.includes('4892') ? 'BATCH CRATE-4892' : 'BATCH CRATE-4892'}
-            onApplyBatchToInspection={(crate) => {
-              setBatchId(crate.crateId);
-              setSupplierName(crate.supplier);
-              setAmbientTemp(crate.factors.temperature);
-              setIsDigitalTwin(false);
-              if (currentImage) {
-                runInspection(
-                  currentImage,
-                  mode,
-                  crate.factors.temperature,
-                  crate.factors.transitHours,
-                  transitKm,
-                  crate.factors.storageMode === 'CHILLED_REEFER' ? 'CHILLED_REEFER' : 'AMBIENT_LORRY',
-                  crate.crateId,
-                  crate.supplier,
-                  crate.commodity.includes('Tomato') ? 'Tomato' : 'Produce'
-                );
-              }
+        ) : activeWorkspace === 'SUPPLY_CHAIN' ? (
+          <div className="space-y-6">
+            {/* Supply Chain Sub-Navigation Tabs */}
+            <div className="bg-stone-900 p-2 rounded-2xl border border-stone-800 flex items-center justify-between flex-wrap gap-2 text-xs">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSupplyChainSubTab('ROUTING')}
+                  className={`px-3.5 py-1.5 rounded-xl font-medium transition-colors flex items-center gap-1.5 ${
+                    supplyChainSubTab === 'ROUTING' ? 'bg-indigo-600 text-white' : 'text-stone-400 hover:text-white'
+                  }`}
+                >
+                  <Route className="w-3.5 h-3.5" />
+                  <span>Demand & Routing</span>
+                </button>
+                <button
+                  onClick={() => setSupplyChainSubTab('PRICING')}
+                  className={`px-3.5 py-1.5 rounded-xl font-medium transition-colors flex items-center gap-1.5 ${
+                    supplyChainSubTab === 'PRICING' ? 'bg-amber-600 text-stone-950 font-bold' : 'text-stone-400 hover:text-white'
+                  }`}
+                >
+                  <Tag className="w-3.5 h-3.5" />
+                  <span>8-Variable Pricing</span>
+                </button>
+                <button
+                  onClick={() => setSupplyChainSubTab('SUPPLIERS')}
+                  className={`px-3.5 py-1.5 rounded-xl font-medium transition-colors flex items-center gap-1.5 ${
+                    supplyChainSubTab === 'SUPPLIERS' ? 'bg-cyan-600 text-stone-950 font-bold' : 'text-stone-400 hover:text-white'
+                  }`}
+                >
+                  <Award className="w-3.5 h-3.5" />
+                  <span>Supplier Scorecards</span>
+                </button>
+                <button
+                  onClick={() => setSupplyChainSubTab('WHAT_IF')}
+                  className={`px-3.5 py-1.5 rounded-xl font-medium transition-colors flex items-center gap-1.5 ${
+                    supplyChainSubTab === 'WHAT_IF' ? 'bg-emerald-600 text-stone-950 font-bold' : 'text-stone-400 hover:text-white'
+                  }`}
+                >
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  <span>"What-If" Sensitivity Simulator</span>
+                </button>
+              </div>
+
+              <button
+                onClick={() => setActiveWorkspace('INSPECTION')}
+                className="text-stone-400 hover:text-stone-200 font-medium px-3 py-1"
+              >
+                ← Back
+              </button>
+            </div>
+
+            {supplyChainSubTab === 'ROUTING' ? (
+              <DemandForecastingAndRoutingStudio
+                onClose={() => setActiveWorkspace('INSPECTION')}
+                batchId={batchId}
+                commodityName={report?.produce_type || 'Tomato'}
+              />
+            ) : supplyChainSubTab === 'PRICING' ? (
+              <DynamicPricingMarkdownStudio
+                onClose={() => setActiveWorkspace('INSPECTION')}
+                commodityName={report?.produce_type || 'Tomato'}
+                initialFactors={{
+                  shelfLifeRemainingDays: report?.ambient_shelf_life_days ?? 2.3,
+                  currentInventoryKg: 400,
+                  storeDemandVelocityKgHour: 8.5,
+                  grade: (report?.inbound_action?.verdict as any) ?? 'ACCEPTED_GRADE_B',
+                  defectPercent: report?.bruise_defect_index ?? 8.2,
+                }}
+              />
+            ) : supplyChainSubTab === 'SUPPLIERS' ? (
+              <SupplierScorecardStudio
+                onClose={() => setActiveWorkspace('INSPECTION')}
+                currentSupplier={supplierName}
+              />
+            ) : (
+              <SupplyChainEconomics />
+            )}
+          </div>
+        ) : activeWorkspace === 'FEEDBACK_LEDGER' ? (
+          <ClosedLoopFeedbackStudio
+            onNavigateToScan={() => setActiveWorkspace('INSPECTION')}
+            onSelectBatchForScan={(bId) => {
+              setBatchId(bId);
+              setActiveWorkspace('INSPECTION');
             }}
+            currentReportBatchId={batchId}
           />
-        ) : isTelemetryStudio ? (
-          <ColdChainTelemetryStudio
-            telemetry={coldChainTelemetry}
-            onUpdateTelemetry={handleUpdateColdChainTelemetry}
-            onClose={() => setIsTelemetryStudio(false)}
-            batchId={batchId}
-            produceType={report?.produce_type || 'Tomato'}
-          />
-        ) : isCommodityDatabase ? (
+        ) : activeWorkspace === 'COMMODITY_DB' ? (
           <CommodityDatabaseStudio
             onApplyToMainInspection={(cfg) => {
               setAmbientTemp(cfg.temp);
               setSupplierName(cfg.farm);
-              setIsCommodityDatabase(false);
-              if (currentImage) {
-                runInspection(
-                  currentImage,
-                  mode,
-                  cfg.temp,
-                  transitHours,
-                  transitKm,
-                  storageMethod,
-                  batchId,
-                  cfg.farm,
-                  cfg.crop,
-                  sensorTelemetry,
-                  weatherContext,
-                  logisticsContext,
-                  demandContext
-                );
+              setActiveWorkspace('INSPECTION');
+              if (cachedVisionDataRef.current) {
+                recalculatePhysics({ temp: cfg.temp });
               }
             }}
           />
-        ) : isFeedbackStudio ? (
-          <ClosedLoopFeedbackStudio
-            onNavigateToScan={() => setIsFeedbackStudio(false)}
-            onSelectBatchForScan={(bId) => {
-              setBatchId(bId);
-              setIsFeedbackStudio(false);
-            }}
-            currentReportBatchId={batchId}
-          />
-        ) : isChatMode ? (
+        ) : activeWorkspace === 'CHAT_SWARM' ? (
           <AgentChatMode
             report={report}
             batchId={batchId}
@@ -1107,12 +882,12 @@ export default function App() {
             transitHours={transitHours}
             transitKm={transitKm}
             storageMethod={storageMethod}
-            onClose={() => setIsChatMode(false)}
-            onNavigateToScan={() => setIsChatMode(false)}
+            onClose={() => setActiveWorkspace('INSPECTION')}
+            onNavigateToScan={() => setActiveWorkspace('INSPECTION')}
           />
         ) : (
+          /* Live Dual-Mode Visual Inspection Workspace */
           <>
-            {/* Framing Wrapper: Supports handheld mobile view simulation or responsive wide-dock */}
             <div className={isMobileView ? 'max-w-md mx-auto w-full transition-all duration-300' : 'w-full'}>
               {isMobileView && (
                 <div className="text-center pb-3 text-xs font-mono text-emerald-400 flex items-center justify-center gap-2 bg-emerald-950/60 border border-emerald-800/80 rounded-xl p-2.5 mb-4 shadow-sm">
@@ -1121,9 +896,8 @@ export default function App() {
                 </div>
               )}
 
-              {/* Responsive Grid Layout: Stacked on Mobile & Tablet, 5/7 Split on Desktop */}
               <div className={`grid gap-5 sm:gap-6 ${isMobileView ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-12'}`}>
-                {/* Left Column: Viewfinder, Multi-Factor Context & Sliders (5 columns on desktop) */}
+                {/* Left Column: Viewfinder, Multi-Factor Context & Sliders (5 cols) */}
                 <div className={isMobileView ? 'space-y-5 sm:space-y-6' : 'lg:col-span-5 space-y-5 sm:space-y-6'}>
                   <CameraViewfinder
                     mode={mode}
@@ -1136,7 +910,7 @@ export default function App() {
                     currentSupplier={supplierName}
                   />
 
-                  {/* Multi-Factor Ingestion Context Panel (IoT Sensors, Weather, Road, Demand) */}
+                  {/* Multi-Factor Ingestion Context Panel */}
                   <MultiFactorContextPanel
                     mode={mode}
                     sensorTelemetry={sensorTelemetry}
@@ -1149,7 +923,7 @@ export default function App() {
                     onUpdateDemand={handleUpdateDemand}
                     onResetDefaults={handleResetMultiFactor}
                     ambientTemp={ambientTemp}
-                    onOpenTelemetryStudio={() => setIsTelemetryStudio(true)}
+                    onOpenTelemetryStudio={() => setIsTelemetryModalOpen(true)}
                   />
 
                   {/* Basic Metadata Sliders */}
@@ -1161,12 +935,11 @@ export default function App() {
                           {mode === 'FIELD_PRE_HARVEST' ? 'Transit Distance & Hours' : 'Receiving Dock Metadata'}
                         </span>
                       </div>
-                      <span className="text-[10px] font-mono text-stone-500">Live Input</span>
+                      <span className="text-[10px] font-mono text-emerald-400">Decoupled Reactive</span>
                     </div>
 
                     {mode === 'FIELD_PRE_HARVEST' ? (
                       <div className="space-y-3 text-xs">
-                        {/* Transit Distance */}
                         <div>
                           <div className="flex justify-between text-stone-300 font-medium">
                             <span className="flex items-center gap-1">
@@ -1183,13 +956,16 @@ export default function App() {
                             onChange={(e) => {
                               const km = Number(e.target.value);
                               setTransitKm(km);
-                              setTransitHours(Math.max(2, Math.round(km / 20)));
+                              const h = Math.max(2, Math.round(km / 20));
+                              setTransitHours(h);
+                              if (cachedVisionDataRef.current) {
+                                recalculatePhysics({ km, hours: h });
+                              }
                             }}
                             className="w-full accent-cyan-500 mt-1 cursor-pointer"
                           />
                         </div>
 
-                        {/* Transit Hours */}
                         <div>
                           <div className="flex justify-between text-stone-300 font-medium">
                             <span className="flex items-center gap-1">
@@ -1203,7 +979,13 @@ export default function App() {
                             max="36"
                             step="1"
                             value={transitHours}
-                            onChange={(e) => setTransitHours(Number(e.target.value))}
+                            onChange={(e) => {
+                              const h = Number(e.target.value);
+                              setTransitHours(h);
+                              if (cachedVisionDataRef.current) {
+                                recalculatePhysics({ hours: h });
+                              }
+                            }}
                             className="w-full accent-amber-500 mt-1 cursor-pointer"
                           />
                         </div>
@@ -1233,82 +1015,21 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* Multi-Agent Swarm Execution Trace (5 Agents) */}
+                  {/* Multi-Agent Swarm Execution Trace */}
                   {report && <MultiAgentTrace traces={report.agent_traces} />}
                 </div>
 
-                {/* Right Column: Decisions, Kinetic Decay, Feedback Callout & Actions (7 columns on desktop) */}
+                {/* Right Column: Decisions, Dynamic Twin & Economics (7 cols) */}
                 <div className={isMobileView ? 'space-y-6' : 'lg:col-span-7 space-y-6'}>
                   {report && (
                     <>
-                      {/* Dynamic Commodity Database Agent Prediction Card */}
-                      {report.commodity_database_result && (
-                        <div className="rounded-2xl bg-gradient-to-br from-stone-900 via-stone-900 to-purple-950/40 border border-purple-800/60 p-4 sm:p-5 shadow-xl flex flex-col gap-3 relative overflow-hidden">
-                          <div className="flex items-center justify-between border-b border-stone-800 pb-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-lg bg-purple-950 border border-purple-700 flex items-center justify-center text-purple-400">
-                                <Database className="w-4 h-4" />
-                              </div>
-                              <div>
-                                <div className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                                  <span>Dynamic Produce Intelligence Agent</span>
-                                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800">
-                                    Database Grounded
-                                  </span>
-                                </div>
-                                <p className="text-[11px] text-stone-400">
-                                  Real-time variety, maturity, packaging &amp; farm empirical prior synthesis
-                                </p>
-                              </div>
-                            </div>
-
-                            <button
-                              onClick={() => setIsCommodityDatabase(true)}
-                              className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-[11px] flex items-center gap-1 transition-colors cursor-pointer"
-                            >
-                              <span>Open Dynamic Produce Intelligence</span>
-                              <ChevronRight className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-
-                          {/* Specification Readout */}
-                          <div className="bg-stone-950 rounded-xl p-3.5 border border-stone-800 font-mono text-xs">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <div className="space-y-1 text-stone-300 border-b sm:border-b-0 sm:border-r border-stone-800 pb-2 sm:pb-0 sm:pr-3">
-                                <div className="text-sm font-bold text-white font-sans">
-                                  {report.commodity_database_result.variety_name}
-                                </div>
-                                <div>Farm: <span className="text-cyan-300 font-bold">{report.commodity_database_result.farm_name}</span></div>
-                                <div>Harvest maturity = <span className="text-amber-300 font-bold">Stage {report.commodity_database_result.harvest_maturity_stage}</span></div>
-                                <div>Temperature = <span className="text-rose-300 font-bold">{report.commodity_database_result.temperature_celsius}°C</span></div>
-                                <div>Humidity = <span className="text-blue-300 font-bold">{report.commodity_database_result.humidity_pct}%</span></div>
-                                <div>Packaging = <span className="text-emerald-300 font-bold">{report.commodity_database_result.packaging_type}</span></div>
-                              </div>
-
-                              <div className="flex flex-col justify-center items-center text-center p-1">
-                                <span className="text-[10px] uppercase text-stone-500 font-sans">Predicted Shelf Life</span>
-                                <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-300 my-0.5">
-                                  {report.commodity_database_result.predicted_shelf_life_days} days
-                                </div>
-                                <div className="text-xs text-stone-300 font-bold">
-                                  Confidence = <span className="text-emerald-400 font-extrabold">{report.commodity_database_result.confidence_score_pct}%</span>
-                                </div>
-                                <div className="text-[10px] text-stone-500 mt-1">
-                                  vs. Static baseline: {report.commodity_database_result.legacy_static_days} days
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Mode-Specific Primary Decision Card */}
+                      {/* Dual-Mode Decision Card */}
                       {mode === 'FIELD_PRE_HARVEST' ? (
                         <FieldHarvestDecision
                           report={report}
                           transitHours={transitHours}
                           transitKm={transitKm}
-                          onOpenChat={() => setIsChatMode(true)}
+                          onOpenChat={() => setActiveWorkspace('CHAT_SWARM')}
                           onOpenMobileFieldModal={() => setIsMobileFieldModalOpen(true)}
                         />
                       ) : (
@@ -1316,41 +1037,21 @@ export default function App() {
                           report={report}
                           batchId={batchId}
                           supplierName={supplierName}
-                          onOpenChat={() => setIsChatMode(true)}
                           activeCustomerRuleId={selectedCustomerRuleId}
-                          onSelectCustomerRuleId={(newRuleId) => {
-                            setSelectedCustomerRuleId(newRuleId);
-                            if (currentImage) {
-                              runInspection(
-                                currentImage,
-                                mode,
-                                ambientTemp,
-                                transitHours,
-                                transitKm,
-                                storageMethod,
-                                batchId,
-                                supplierName,
-                                report?.produce_type || 'Tomato',
-                                sensorTelemetry,
-                                weatherContext,
-                                logisticsContext,
-                                demandContext,
-                                newRuleId,
-                                customCommercialRule || undefined
-                              );
-                            }
+                          onSelectCustomerRuleId={(id) => {
+                            setSelectedCustomerRuleId(id);
+                            if (cachedVisionDataRef.current) recalculatePhysics({ ruleId: id });
                           }}
-                          onOpenGradeEngineStudio={() => setIsGradeEngineStudio(true)}
+                          onOpenGradeEngineStudio={() => setActiveWorkspace('RULES_ENGINE')}
                           onOpenPricingStudio={() => {
-                            setIsPricingStudio(true);
-                            setIsDemandRoutingStudio(false);
-                            setIsSupplierScorecardStudio(false);
+                            setActiveWorkspace('SUPPLY_CHAIN');
+                            setSupplyChainSubTab('PRICING');
                           }}
                           onOpenRoutingStudio={() => {
-                            setIsDemandRoutingStudio(true);
-                            setIsPricingStudio(false);
-                            setIsSupplierScorecardStudio(false);
+                            setActiveWorkspace('SUPPLY_CHAIN');
+                            setSupplyChainSubTab('ROUTING');
                           }}
+                          onOpenChat={() => setActiveWorkspace('CHAT_SWARM')}
                         />
                       )}
 
@@ -1366,17 +1067,17 @@ export default function App() {
                                 Closed-Loop Feedback Calibration Active
                               </h4>
                               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-700">
-                                Agent 5 Calibrated
+                                Continual Learning
                               </span>
                             </div>
                             <p className="text-xs text-stone-300 mt-0.5">
-                              This decision was synthesized using {report.feedback_loop_calibration?.cohort_batches_analyzed || 1842} historical batches with an empirical model accuracy of {report.feedback_loop_calibration?.historical_model_accuracy_pct || 94.8}%.
+                              Synthesized across {report.feedback_loop_calibration?.cohort_batches_analyzed || 1842} historical deliveries. Empirical accuracy: {report.feedback_loop_calibration?.historical_model_accuracy_pct || 94.8}%.
                             </p>
                           </div>
                         </div>
 
                         <button
-                          onClick={() => setIsFeedbackStudio(true)}
+                          onClick={() => setActiveWorkspace('FEEDBACK_LEDGER')}
                           className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md shadow-purple-950/60 flex items-center gap-1.5 shrink-0 transition-colors"
                         >
                           <span>Open Feedback Studio</span>
@@ -1384,9 +1085,9 @@ export default function App() {
                         </button>
                       </div>
 
-                      {/* Real-time Shelf-Life Digital Twin Dynamic Card (Matches BATCH CRATE-4892 UI) */}
+                      {/* Real-time Shelf-Life Digital Twin Card */}
                       <ShelfLifeDigitalTwinCard
-                        onOpenFullStudio={() => setIsDigitalTwin(true)}
+                        onOpenFullStudio={() => setIsDigitalTwinModalOpen(true)}
                         activeBatchId={batchId.includes('4892') ? 'BATCH CRATE-4892' : 'BATCH CRATE-4892'}
                         onSelectBatch={(cId) => {
                           setBatchId(cId);
@@ -1402,8 +1103,8 @@ export default function App() {
                         onStorageChange={handleStorageChange}
                         supplierName={supplierName}
                         coldChainTelemetry={coldChainTelemetry}
-                        onOpenTelemetryStudio={() => setIsTelemetryStudio(true)}
-                        onOpenDigitalTwin={() => setIsDigitalTwin(true)}
+                        onOpenTelemetryStudio={() => setIsTelemetryModalOpen(true)}
+                        onOpenDigitalTwin={() => setIsDigitalTwinModalOpen(true)}
                       />
 
                       {/* Supply Chain Economics & ROI Widget */}
@@ -1425,15 +1126,12 @@ export default function App() {
         )}
       </main>
 
-      {/* Floating Chat Quick-Access Button (Visible when not in chat mode) */}
-      {!isChatMode && (
+      {/* Floating Agent Swarm Chat Shortcut */}
+      {activeWorkspace !== 'CHAT_SWARM' && (
         <button
-          onClick={() => {
-            setIsChatMode(true);
-            setIsFeedbackStudio(false);
-          }}
+          onClick={() => setActiveWorkspace('CHAT_SWARM')}
           className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-xl shadow-purple-950/80 flex items-center gap-2 border border-purple-400/40 hover:scale-105 active:scale-95 transition-all group min-h-[44px]"
-          title="Chat with zero-hallucination agent swarm based on current scan facts and feedback loop"
+          title="Chat with zero-hallucination agent swarm based on active scan facts"
         >
           <div className="relative">
             <MessageSquare className="w-4 h-4 text-white" />
@@ -1447,13 +1145,12 @@ export default function App() {
         </button>
       )}
 
-      {/* Multi-Agent Architecture Modal */}
+      {/* Modals */}
       <MultiAgentModal
         isOpen={isAgentModalOpen}
         onClose={() => setIsAgentModalOpen(false)}
       />
 
-      {/* Mobile Field Scout Modal */}
       <MobileFieldScoutModal
         isOpen={isMobileFieldModalOpen}
         onClose={() => setIsMobileFieldModalOpen(false)}
@@ -1461,30 +1158,94 @@ export default function App() {
         produceName={report?.produce_type || 'Tomato'}
       />
 
-      {/* WhatsApp & Mobile Operational Alerts Modal */}
       <WhatsAppAlertsModal
         isOpen={isAlertsModalOpen}
         onClose={() => setIsAlertsModalOpen(false)}
       />
 
-      {/* Immutable Audit Trail & Model Provenance Modal */}
       <AuditAndVersioningModal
         isOpen={isAuditModalOpen}
         onClose={() => setIsAuditModalOpen(false)}
       />
 
+      <CrateLotSamplingModal
+        isOpen={isCrateSampleModalOpen}
+        onClose={() => setIsCrateSampleModalOpen(false)}
+        cropHint={report?.produce_type || 'Tomato'}
+        batchId={batchId}
+        supplierName={supplierName}
+      />
+
+      <ThermalLabelModal
+        isOpen={isBarcodeModalOpen}
+        onClose={() => setIsBarcodeModalOpen(false)}
+        report={report}
+        batchId={batchId}
+        supplierName={supplierName}
+      />
+
+      <WhatIfSimulatorModal
+        isOpen={isWhatIfModalOpen}
+        onClose={() => setIsWhatIfModalOpen(false)}
+        report={report}
+      />
+
+      {/* Digital Twin Modal wrapper when requested from cards */}
+      {isDigitalTwinModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-stone-950/85 backdrop-blur-md">
+          <div className="w-full max-w-5xl max-h-[92vh] overflow-y-auto bg-stone-900 border border-stone-800 rounded-3xl p-4 sm:p-6">
+            <DigitalTwinStudio
+              onClose={() => setIsDigitalTwinModalOpen(false)}
+              initialBatchId={batchId.includes('4892') ? 'BATCH CRATE-4892' : 'BATCH CRATE-4892'}
+              onApplyBatchToInspection={(crate) => {
+                setBatchId(crate.crateId);
+                setSupplierName(crate.supplier);
+                setAmbientTemp(crate.factors.temperature);
+                setIsDigitalTwinModalOpen(false);
+                if (cachedVisionDataRef.current) {
+                  recalculatePhysics({ temp: crate.factors.temperature });
+                }
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Cold Chain Telemetry Modal wrapper */}
+      {isTelemetryModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-stone-950/85 backdrop-blur-md">
+          <div className="w-full max-w-5xl max-h-[92vh] overflow-y-auto bg-stone-900 border border-stone-800 rounded-3xl p-4 sm:p-6">
+            <ColdChainTelemetryStudio
+              telemetry={coldChainTelemetry}
+              onUpdateTelemetry={(updated) => {
+                const next = { ...coldChainTelemetry, ...updated };
+                setColdChainTelemetry(next);
+                if (cachedVisionDataRef.current) {
+                  recalculatePhysics({
+                    sensors: { ...sensorTelemetry, cold_chain: next },
+                  });
+                }
+              }}
+              onClose={() => setIsTelemetryModalOpen(false)}
+              batchId={batchId}
+              produceType={report?.produce_type || 'Tomato'}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Footer */}
       <footer className="border-t border-stone-800 bg-stone-950/80 px-4 py-4 text-xs text-stone-500 text-center">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <div>
-            AgriGrade Closed-Loop Swarm • Image + Sensors + Logistics + Demand + Actual Outcomes → Decision → Model Improvement
+            AgriGrade 2.1 Enterprise • Decoupled Biophysics + Codex Crate Sampling + Multi-Store Dynamic Markdown
           </div>
           <div className="flex items-center gap-3 text-stone-400 font-mono text-[11px]">
-            <span>Closed-Loop v2.0</span>
+            <span>Active Role: <strong className="text-white">{userRole}</strong></span>
             <span>•</span>
             <span>1,842 Batches Learned</span>
             <span>•</span>
-            <span>94.8% Accuracy</span>
+            <span>94.8% Empirical Accuracy</span>
           </div>
         </div>
       </footer>

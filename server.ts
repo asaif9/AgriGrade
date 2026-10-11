@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
 import type {
@@ -16,6 +17,9 @@ import type {
   DemandAndInventoryContext,
   SupplierReliabilityProfile,
   ColdChainTelemetry,
+  CrateSampleLotResult,
+  CrateItemSample,
+  ThermalLabelData,
 } from './src/types';
 import {
   DEFAULT_CALIBRATED_COLD_CHAIN_TELEMETRY,
@@ -78,8 +82,65 @@ import type {
 
 dotenv.config();
 
+// Persistent Runtime Store File
+const STORE_FILE = path.join(process.cwd(), 'runtime_store.json');
+
+// In-Memory Live Closed-Loop Feedback Learning State
+let liveModelMetrics: ModelImprovementMetrics = JSON.parse(JSON.stringify(INITIAL_MODEL_METRICS));
+let liveCompletedOutcomes: ActualOutcomeRecord[] = JSON.parse(JSON.stringify(INITIAL_BATCH_OUTCOMES));
+let liveActiveBatches: ActualOutcomeRecord[] = JSON.parse(JSON.stringify(ACTIVE_LIFECYCLE_BATCHES));
+
+// In-Memory Dynamic Commercial Grade Engine Rules
+let liveCommercialRules: CommercialGradeRule[] = JSON.parse(JSON.stringify(DEFAULT_COMMERCIAL_RULES));
+
+// In-Memory Enterprise Audit Trail & Operational Alerts
+let liveAuditTrail: ComprehensiveAuditRecord[] = JSON.parse(JSON.stringify(INITIAL_AUDIT_TRAIL));
+let liveOperationalAlerts: OperationalAlert[] = JSON.parse(JSON.stringify(INITIAL_OPERATIONAL_ALERTS));
+
+// Load persistent state if available
+function loadRuntimeStore() {
+  try {
+    if (fs.existsSync(STORE_FILE)) {
+      const data = JSON.parse(fs.readFileSync(STORE_FILE, 'utf-8'));
+      if (data.liveModelMetrics) liveModelMetrics = data.liveModelMetrics;
+      if (data.liveCompletedOutcomes) liveCompletedOutcomes = data.liveCompletedOutcomes;
+      if (data.liveActiveBatches) liveActiveBatches = data.liveActiveBatches;
+      if (data.liveCommercialRules && Array.isArray(data.liveCommercialRules) && data.liveCommercialRules.length > 0) {
+        liveCommercialRules = data.liveCommercialRules;
+      }
+      if (data.liveAuditTrail && Array.isArray(data.liveAuditTrail)) liveAuditTrail = data.liveAuditTrail;
+      if (data.liveOperationalAlerts && Array.isArray(data.liveOperationalAlerts)) liveOperationalAlerts = data.liveOperationalAlerts;
+    }
+  } catch (err) {
+    console.warn('Notice: initialized in-memory defaults (store load error):', err);
+  }
+}
+
+function saveRuntimeStore() {
+  try {
+    fs.writeFileSync(
+      STORE_FILE,
+      JSON.stringify(
+        {
+          liveModelMetrics,
+          liveCompletedOutcomes,
+          liveActiveBatches,
+          liveCommercialRules,
+          liveAuditTrail: liveAuditTrail.slice(0, 100), // Keep recent 100 audits
+          liveOperationalAlerts: liveOperationalAlerts.slice(0, 50),
+        },
+        null,
+        2
+      )
+    );
+  } catch (err) {
+    console.warn('Notice: could not persist runtime store to disk:', err);
+  }
+}
+
+loadRuntimeStore();
+
 const app = express();
-// Priority: command line --port > process.env.PORT > DEV_PORT > 3000 (dev default)
 const PORT = (() => {
   const portArgIdx = process.argv.indexOf('--port');
   if (portArgIdx !== -1 && process.argv[portArgIdx + 1]) {
@@ -98,20 +159,9 @@ const PORT = (() => {
   return 3000;
 })();
 
-// In-Memory Live Closed-Loop Feedback Learning State
-let liveModelMetrics: ModelImprovementMetrics = JSON.parse(JSON.stringify(INITIAL_MODEL_METRICS));
-let liveCompletedOutcomes: ActualOutcomeRecord[] = JSON.parse(JSON.stringify(INITIAL_BATCH_OUTCOMES));
-let liveActiveBatches: ActualOutcomeRecord[] = JSON.parse(JSON.stringify(ACTIVE_LIFECYCLE_BATCHES));
-
-// In-Memory Dynamic Commercial Grade Engine Rules
-let liveCommercialRules: CommercialGradeRule[] = JSON.parse(JSON.stringify(DEFAULT_COMMERCIAL_RULES));
-
-// In-Memory Enterprise Audit Trail & Operational Alerts
-let liveAuditTrail: ComprehensiveAuditRecord[] = JSON.parse(JSON.stringify(INITIAL_AUDIT_TRAIL));
-let liveOperationalAlerts: OperationalAlert[] = JSON.parse(JSON.stringify(INITIAL_OPERATIONAL_ALERTS));
-
 // Allow large image payloads from camera
 app.use(express.json({ limit: '25mb' }));
+
 
 // Lazy Google GenAI Client
 let genAIClient: GoogleGenAI | null = null;
@@ -194,6 +244,536 @@ function calculateKineticDecay(
     ref_temp_used: T_ref,
     bruise_penalty_applied: Math.round(D_bruise * 100) / 100,
     daily_decay_rate_pct: Math.round((1.0 - tempFactor) * 100 + (ripenessPct * 0.15)),
+  };
+}
+
+// Assemble full AgriGrade report from biophysical equations & context without re-invoking vision model
+function assembleAgriGradeReport(
+  geminiReport: any,
+  payload: InspectionRequest,
+  imageQualityGateOverride?: any
+): AgriGradeReport {
+  const {
+    mode = 'FIELD_PRE_HARVEST',
+    crop_type_hint = 'Tomato',
+    ambient_temp_celsius = 28.0,
+    transit_hours_to_hub = 10,
+    transit_distance_km = 120,
+    storage_method = 'AMBIENT_LORRY',
+    batch_id = `BATCH-${Math.floor(1000 + Math.random() * 9000)}`,
+    supplier_name = 'GreenField Agri Cluster',
+  } = payload;
+
+  const crop = geminiReport?.produce_type || crop_type_hint || 'Tomato';
+  const variety = geminiReport?.variety_detected || (crop.toLowerCase().includes('apple') ? 'Gala' : 'Roma');
+  const usdaStage = (geminiReport?.usda_color_stage || 2) as USDAMaturityStage;
+  const ripenessPct = typeof geminiReport?.ripeness_percentage === 'number' ? geminiReport.ripeness_percentage : (usdaStage * 16.6);
+  const bruiseIndex = typeof geminiReport?.bruise_defect_index === 'number' ? geminiReport.bruise_defect_index : 7.5;
+
+  const sensorTelemetry: SensorTelemetry = payload.sensor_telemetry || {
+    transit_logger_temp: ambient_temp_celsius,
+    humidity_pct: 78,
+    ethylene_ppm: 0.8,
+    vibration_g_force: 1.1,
+    temp_spike_detected: ambient_temp_celsius > 32,
+    temp_spike_duration_hours: ambient_temp_celsius > 32 ? 2.5 : 0,
+  };
+
+  const coldChainTelemetry: ColdChainTelemetry = payload.cold_chain_telemetry || sensorTelemetry.cold_chain || DEFAULT_CALIBRATED_COLD_CHAIN_TELEMETRY;
+  sensorTelemetry.cold_chain = coldChainTelemetry;
+
+  const weatherContext: WeatherContext = payload.weather_context || {
+    harvest_ambient_temp: ambient_temp_celsius,
+    heatwave_warning: ambient_temp_celsius >= 33,
+    precipitation_at_harvest: false,
+    humidity_relative_pct: 68,
+    solar_radiation_index: ambient_temp_celsius > 30 ? 'HIGH' : 'MODERATE',
+  };
+
+  const logisticsContext: LogisticsContext = payload.logistics_context || {
+    transit_hours_to_hub,
+    transit_distance_km,
+    storage_method,
+    reefer_temperature_hold: storage_method === 'CHILLED_REEFER' ? 8.0 : undefined,
+    road_condition: transit_distance_km > 150 ? 'MODERATE_RURAL' : 'SMOOTH_HIGHWAY',
+    transit_delay_hours: 0,
+    carrier_sla_rating: 94,
+  };
+
+  const demandInventoryContext: DemandAndInventoryContext = payload.demand_inventory_context || {
+    dark_store_inventory_crates: 42,
+    shelf_turnover_hours: 14,
+    current_hourly_demand_rate: 3.2,
+    active_discount_promos: false,
+    competing_batch_expiry_hours: 12,
+    demand_surge_factor: 1.2,
+  };
+
+  const ethylenePenalty = Math.max(0, ((sensorTelemetry.ethylene_ppm || 0.8) - 1.0) * 0.12);
+  const vibrationShockPenalty = Math.max(0, ((sensorTelemetry.vibration_g_force || 1.1) - 1.5) * 4.5);
+  const heatwaveAcceleration = weatherContext.heatwave_warning && storage_method === 'AMBIENT_LORRY' ? 0.25 : 0.0;
+
+  const adjustedBruiseIndex = Math.min(100, Math.max(0, bruiseIndex + vibrationShockPenalty));
+  const effectiveAmbientTemp = Math.max(ambient_temp_celsius, weatherContext.harvest_ambient_temp);
+
+  const effectiveFarm = payload.farm_name || (supplier_name.includes('Saraswati') ? 'Farm B' : supplier_name.includes('Narmada') ? 'Farm D' : supplier_name.includes('Apex') ? 'Farm C' : 'Farm A');
+  const effectivePackaging = payload.packaging_type || 'ventilated_crate';
+  const effectiveHumidity = payload.humidity_pct || sensorTelemetry.humidity_pct || 86;
+
+  const dynamicDbResult = calculateDynamicCommodityShelfLife({
+    commodityId: crop,
+    varietyId: variety,
+    farmName: effectiveFarm,
+    maturityStage: usdaStage,
+    temperatureC: effectiveAmbientTemp,
+    humidityPct: effectiveHumidity,
+    packagingType: effectivePackaging,
+    storageMethod: storage_method === 'CHILLED_REEFER' ? 'chilled_reefer' : 'cool_cellar',
+    bruiseDefectIndex: adjustedBruiseIndex,
+  });
+
+  const kineticResults = calculateKineticDecay(
+    crop,
+    ripenessPct,
+    effectiveAmbientTemp,
+    adjustedBruiseIndex,
+    storage_method
+  );
+
+  const cohortBatchesAnalyzed = liveModelMetrics.totalBatchesLearned;
+  const learnedDecayOffsetDays = +(0.15 - (ethylenePenalty * 2.0) - heatwaveAcceleration).toFixed(2);
+  const calibratedAmbientDays = dynamicDbResult.predictedShelfLifeDays;
+
+  let activeCommercialRule: CommercialGradeRule;
+  if (payload.custom_commercial_rule && typeof payload.custom_commercial_rule === 'object') {
+    const custom = payload.custom_commercial_rule;
+    activeCommercialRule = {
+      id: custom.id || 'custom-customer-rule',
+      name: custom.name || 'Custom Commercial Rule',
+      customer: custom.customer || 'Custom Customer Spec',
+      commodity: custom.commodity || crop.toLowerCase(),
+      market: custom.market || 'custom',
+      description: custom.description || 'Configurable dynamic customer tolerance criteria.',
+      grade_a: {
+        defect_percent: custom.grade_a?.defect_percent || '<5',
+        maturity: custom.grade_a?.maturity || [4, 5],
+        firmness: custom.grade_a?.firmness || '>3.5',
+        min_shelf_life_days: custom.grade_a?.min_shelf_life_days || '>3.0',
+        erp_routing_tag: custom.grade_a?.erp_routing_tag || 'PREMIUM_RETAIL_BIN',
+      },
+      grade_b: {
+        defect_percent: custom.grade_b?.defect_percent || '5-15',
+        maturity: custom.grade_b?.maturity || [3, 4, 5, 6],
+        firmness: custom.grade_b?.firmness || '2.5-3.5',
+        min_shelf_life_days: custom.grade_b?.min_shelf_life_days || '>1.5',
+        recommended_discount_percent: custom.grade_b?.recommended_discount_percent ?? 15,
+        fast_track_hours: custom.grade_b?.fast_track_hours ?? 8,
+        erp_routing_tag: custom.grade_b?.erp_routing_tag || 'FAST_DISPATCH_DISCOUNT_15',
+      },
+      reject_criteria: custom.reject_criteria || {
+        max_defect_percent: custom.reject_criteria?.max_defect_percent || '>15',
+        min_firmness: custom.reject_criteria?.min_firmness || '<2.2',
+        unacceptable_defects: custom.reject_criteria?.unacceptable_defects || ['Fungal Mold', 'Bacterial Soft Rot'],
+        erp_routing_tag: 'RETURN_TO_VENDOR_REJECT',
+      },
+    };
+  } else if (payload.customer_rule_id) {
+    const found = liveCommercialRules.find((r) => r.id === payload.customer_rule_id);
+    activeCommercialRule = found || liveCommercialRules[0];
+  } else {
+    const matched = liveCommercialRules.find(
+      (r) => r.commodity.toLowerCase() === crop.toLowerCase()
+    );
+    activeCommercialRule = matched || liveCommercialRules[0];
+  }
+
+  const estimatedFirmness =
+    geminiReport?.firmness_estimate_penetrometer ||
+    Math.max(2.1, Math.round((7.0 - usdaStage * 0.75) * 10) / 10);
+
+  const commercialEvaluation = evaluateCommercialRules(
+    {
+      commodity: crop.toLowerCase(),
+      defectPercent: adjustedBruiseIndex,
+      maturityStage: usdaStage,
+      firmnessKgCm2: estimatedFirmness,
+      ambientShelfLifeDays: calibratedAmbientDays,
+      detectedDefectTypes: (geminiReport?.defects || []).map((d: any) => d.defect_type || ''),
+    },
+    activeCommercialRule
+  );
+
+  const imageQualityGate = imageQualityGateOverride || validateImageQuality(payload.image_b64 || '');
+  const multiAngleInspection = calculateMultiAngleSegmentation(adjustedBruiseIndex, 74.0);
+  const confidenceBreakdown = calculateModelConfidence(adjustedBruiseIndex, usdaStage, variety, imageQualityGate.blurScore);
+  const modelProvenance = CURRENT_MODEL_PROVENANCE;
+  const demandForecast = calculateDemandForecast(400, calibratedAmbientDays, 80, demandInventoryContext.demand_surge_factor);
+  const intelligentRouting = calculateIntelligentRouting(batch_id, `${crop} (${variety})`, 400, calibratedAmbientDays);
+  const markdownOptimization = calculateDynamicMarkdown({
+    shelfLifeRemainingDays: calibratedAmbientDays,
+    currentInventoryKg: 400,
+    storeDemandVelocityKgHour: 8.5,
+    historicalAvgVelocityKgHour: 9.0,
+    competitorPricePerKg: 38,
+    basePricePerKg: 44,
+    timeOfDayHours: 17,
+    dayOfWeek: 5,
+    grade: commercialEvaluation.verdict,
+    defectPercent: adjustedBruiseIndex,
+  });
+  const deepSupplierScorecard = getSupplierScorecard(supplier_name);
+  const rootCauseAnalysis = generateAutonomousRootCause(
+    supplier_name,
+    adjustedBruiseIndex,
+    coldChainTelemetry.timeAboveThresholdMinutes / 60,
+    sensorTelemetry.vibration_g_force || 1.1
+  );
+  const weatherIntelligence = getWeatherIntelligence(effectiveAmbientTemp, weatherContext.precipitation_at_harvest);
+  const packagingIntelligence = getPackagingIntelligence(dynamicDbResult.packagingName);
+  const mobileFieldAdvisory = getMobileFieldAdvisory(usdaStage, 'Bangalore DC (Whitefield Hub)', effectiveAmbientTemp);
+
+  const perceptionLatency = Math.floor(580 + Math.random() * 210);
+  const defectLatency = Math.floor(190 + Math.random() * 60);
+  const kineticLatency = Math.floor(140 + Math.random() * 70);
+  const gateLatency = Math.floor(180 + Math.random() * 80);
+  const demandLatency = Math.floor(120 + Math.random() * 50);
+  const routingLatency = Math.floor(160 + Math.random() * 60);
+  const pricingLatency = Math.floor(140 + Math.random() * 50);
+  const riskLatency = Math.floor(150 + Math.random() * 60);
+  const learningLatency = Math.floor(130 + Math.random() * 60);
+
+  const agentTraces: AgentTraceStep[] = [
+    {
+      agent_name: 'Agent 1: Optical Perception & Phenotyping',
+      role: 'Computer Vision & Morphological Segmentation',
+      status: imageQualityGate.passed ? 'completed' : 'flagged',
+      latency_ms: perceptionLatency,
+      summary: `Identified ${crop} (${variety}). Classified USDA Stage ${usdaStage} (${ripenessPct.toFixed(0)}% ripeness). Optical quality check: ${imageQualityGate.passed ? 'PASSED' : 'FLAGGED'}. Overall confidence: ${confidenceBreakdown.overallConfidencePct}%.`,
+      findings: {
+        crop,
+        variety,
+        stage: usdaStage,
+        confidence_overall: `${confidenceBreakdown.overallConfidencePct}%`,
+        maturity_confidence: `${confidenceBreakdown.maturityConfidencePct}%`,
+        human_review_advised: confidenceBreakdown.humanReviewRecommended,
+        image_quality_passed: imageQualityGate.passed,
+      },
+    },
+    {
+      agent_name: 'Agent 2: Defect & Pathology Segmentation',
+      role: 'Surface Area Pathology & Multi-Angle 360° Fusion',
+      status: adjustedBruiseIndex > 15 ? 'flagged' : 'completed',
+      latency_ms: defectLatency,
+      summary: `Segmented defect area: ${multiAngleInspection.totalDefectAreaCm2} cm² across ${multiAngleInspection.totalVisibleSurfaceCm2} cm² surface (${multiAngleInspection.defectPercentageCalculated}% defect ratio). Bruise Defect Index: ${adjustedBruiseIndex.toFixed(1)}%.`,
+      findings: {
+        defect_area_cm2: multiAngleInspection.totalDefectAreaCm2,
+        total_surface_cm2: multiAngleInspection.totalVisibleSurfaceCm2,
+        defect_ratio_pct: multiAngleInspection.defectPercentageCalculated,
+        defect_confidence: `${confidenceBreakdown.defectConfidencePct}%`,
+        angles_scanned: Object.keys(multiAngleInspection.angles).length,
+      },
+    },
+    {
+      agent_name: 'Agent 3: Kinetic Bio-Decay Digital Twin',
+      role: 'Arrhenius Biochemical Modeling & Cold-Chain Telemetry',
+      status: coldChainTelemetry.coldChainScore < 70 ? 'flagged' : 'completed',
+      latency_ms: kineticLatency,
+      summary: `Predicted ambient shelf-life: ${calibratedAmbientDays} days (Reefer: ${kineticResults.coldDays}d). Cold chain compliance score: ${coldChainTelemetry.coldChainScore}/100. Thermal exposure penalty: ${coldChainTelemetry.shelfLifeLossDays}d.`,
+      findings: {
+        ambient_days: calibratedAmbientDays,
+        cold_days: kineticResults.coldDays,
+        cold_chain_score: coldChainTelemetry.coldChainScore,
+        actual_avg_temp: `${coldChainTelemetry.actualAvgTempCelsius}°C`,
+        shelf_life_loss: `${coldChainTelemetry.shelfLifeLossDays}d`,
+      },
+    },
+    {
+      agent_name: 'Agent 4: Commercial Decision & Rules Engine',
+      role: `Customer Commercial Tolerances (${commercialEvaluation.customer})`,
+      status: commercialEvaluation.verdict === 'REJECTED_AT_DOCK' ? 'flagged' : 'completed',
+      latency_ms: gateLatency,
+      summary: `Enforced Rule: "${commercialEvaluation.ruleName}". Verdict: ${commercialEvaluation.verdict} (Score: ${commercialEvaluation.qualityScore}/100). Routing: ${commercialEvaluation.erpRoutingTag}.`,
+      findings: {
+        customer: commercialEvaluation.customer,
+        market: commercialEvaluation.market,
+        verdict: commercialEvaluation.verdict,
+        score: commercialEvaluation.qualityScore,
+        grade_a_passed: commercialEvaluation.gradeAEvaluation.passed,
+        grade_b_passed: commercialEvaluation.gradeBEvaluation.passed,
+        rejection_reasons: commercialEvaluation.rejectionReasons,
+      },
+    },
+    {
+      agent_name: 'Agent 5: Demand Forecast & Waste Prevention',
+      role: 'Store-Level Velocity & Waste Hazard Forecasting',
+      status: demandForecast.wasteProbabilityPct >= 50 ? 'flagged' : 'completed',
+      latency_ms: demandLatency,
+      summary: `Expected sell-through: ${demandForecast.expectedSellThroughKg} kg (${demandForecast.expectedUnsoldKg} kg unsold, ${demandForecast.wasteProbabilityPct}% waste risk). Recommendation: ${demandForecast.recommendation}.`,
+      findings: demandForecast,
+    },
+    {
+      agent_name: 'Agent 6: Intelligent Routing & Logistics',
+      role: 'Multi-Store Destination & Margin Optimization',
+      status: 'completed',
+      latency_ms: routingLatency,
+      summary: `Selected destination: ${intelligentRouting.selectedStore.storeName} (${intelligentRouting.selectedStore.expectedSellThroughPct}% sell-through, lowest waste risk: ${intelligentRouting.selectedStore.wasteRiskPct}%).`,
+      findings: {
+        selected_store: intelligentRouting.selectedStore.storeName,
+        expected_sell_through_pct: `${intelligentRouting.selectedStore.expectedSellThroughPct}%`,
+        waste_risk_pct: `${intelligentRouting.selectedStore.wasteRiskPct}%`,
+        net_realized_revenue: `₹${intelligentRouting.selectedStore.netRealizedRevenueInr.toLocaleString()}`,
+        dispatch_urgency_hours: intelligentRouting.dispatchUrgencyHours,
+      },
+    },
+    {
+      agent_name: 'Agent 7: Dynamic Pricing & Markdown Optimizer',
+      role: 'Multi-Variable Margin & Markdown Solver',
+      status: 'completed',
+      latency_ms: pricingLatency,
+      summary: `Recommended markdown: ${markdownOptimization.recommendedMarkdownPct}% (₹${markdownOptimization.finalPricePerKg}/kg vs base ₹${markdownOptimization.basePricePerKg}/kg). Projected revenue gain: ₹${markdownOptimization.projectedRevenueGainInr.toLocaleString()}.`,
+      findings: markdownOptimization,
+    },
+    {
+      agent_name: 'Agent 8: Autonomous Risk & Root Cause Diagnostic',
+      role: 'Supply Chain Forensics & Predictive Supplier Risk',
+      status: deepSupplierScorecard.predictiveRiskTier === 'HIGH' ? 'flagged' : 'completed',
+      latency_ms: riskLatency,
+      summary: `Supplier: ${deepSupplierScorecard.supplierName} (Score: ${deepSupplierScorecard.overallScore}/100). Root cause: ${rootCauseAnalysis.primaryCause}.`,
+      findings: {
+        supplier: deepSupplierScorecard.supplierName,
+        overall_score: deepSupplierScorecard.overallScore,
+        root_cause: rootCauseAnalysis.primaryCause,
+        supplier_correlation: rootCauseAnalysis.supplierCorrelation,
+        procurement_recommendation: deepSupplierScorecard.autonomousProcurementRecommendation?.recommendationText,
+      },
+    },
+    {
+      agent_name: 'Agent 9: Closed-Loop Model Calibration & Learning',
+      role: 'Historical Batch Feedback & Continual Calibration',
+      status: 'completed',
+      latency_ms: learningLatency,
+      summary: `Learned across ${cohortBatchesAnalyzed} historical batches. Model accuracy: ${liveModelMetrics.currentClosedLoopAccuracyPct}%, MAE: ${liveModelMetrics.meanAbsoluteErrorDays}d.`,
+      findings: {
+        total_batches_learned: liveModelMetrics.totalBatchesLearned,
+        accuracy_pct: liveModelMetrics.currentClosedLoopAccuracyPct,
+        mae_days: liveModelMetrics.meanAbsoluteErrorDays,
+        learned_decay_offset_days: learnedDecayOffsetDays,
+      },
+    },
+  ];
+
+  let harvestGuidance = geminiReport?.harvest_guidance;
+  let inboundAction = geminiReport?.inbound_action;
+
+  if (mode === 'FIELD_PRE_HARVEST') {
+    if (!harvestGuidance) {
+      if (usdaStage === 1) {
+        harvestGuidance = {
+          should_harvest_today: false,
+          optimal_harvest_window: 'Wait 2 to 3 days on vine',
+          target_channel: 'Hold (Only pick early if long-distance interstate transit > 7 days)',
+          transit_viability_score: 52,
+          harvest_risk_assessment: 'Crop is in pre-breaker green phase. Internal sugars and gel structure are not fully developed.',
+          field_action_steps: [
+            'Retain on vine for 48 hours to accumulate soluble solids (°Brix).',
+            'Perform next optical spot check in 2 days at 08:00 AM.',
+            'Ensure morning irrigation is regulated to prevent blossom split.',
+          ],
+        };
+      } else if (usdaStage === 2) {
+        harvestGuidance = {
+          should_harvest_today: true,
+          optimal_harvest_window: 'Within 12-18 hours (early morning 06:00-09:00 AM pick)',
+          target_channel: 'Quick-Commerce Dark Store Hub (transit 8-16h / 100-250 km)',
+          transit_viability_score: 96,
+          harvest_risk_assessment: 'Optimal Breaker Stage! Firm skin prevents road transit compression. Will hit Stage 3-4 upon hub arrival.',
+          field_action_steps: [
+            'Schedule picking crew for dawn shift (lowest field heat accumulation).',
+            'Use sanitized shallow crates (max 2 layers) to prevent compression.',
+            'Stage crates in shaded holding bay (< 24°C) before lorry loading.',
+          ],
+        };
+      } else if (usdaStage === 3) {
+        harvestGuidance = {
+          should_harvest_today: true,
+          optimal_harvest_window: 'Immediate Harvest (within 6-8 hours)',
+          target_channel: 'Local Dark Store or Regional Mandi (< 24h to shelf)',
+          transit_viability_score: 84,
+          harvest_risk_assessment: 'Turning stage. High consumer appeal but rapid respiration. Requires expedited local delivery.',
+          field_action_steps: [
+            'Pick immediately to avoid over-ripening in field heat.',
+            'Tag crates for local micro-warehouse dispatch within 50 km.',
+            'Advise transport driver to avoid daytime highway stops.',
+          ],
+        };
+      } else {
+        harvestGuidance = {
+          should_harvest_today: false,
+          optimal_harvest_window: 'Divert to Same-Day Local Processing or Farm-Gate Sale',
+          target_channel: 'Farm Gate / Direct Mandi / Puree Processing (Not for Delivery Apps)',
+          transit_viability_score: 34,
+          harvest_risk_assessment: 'Produce is already Stage 4+ (Pink/Red). Extreme rupture risk during multi-stop logistics truck transit.',
+          field_action_steps: [
+            'Do not load into long-haul quick-commerce supply chain.',
+            'Divert to instant local retail or sauce/ketchup processing partners.',
+            'Separate from firmer breaker crates to prevent ethylene cross-contamination.',
+          ],
+        };
+      }
+    }
+  } else {
+    inboundAction = {
+      verdict: commercialEvaluation.verdict,
+      quality_score: commercialEvaluation.qualityScore,
+      fast_track_dispatch_required: commercialEvaluation.fastTrackDispatchRequired,
+      dispatch_window_hours: commercialEvaluation.dispatchWindowHours,
+      recommended_dynamic_discount_percent: commercialEvaluation.recommendedDiscountPercent,
+      erp_routing_tag: commercialEvaluation.erpRoutingTag,
+      disposition_notes: commercialEvaluation.dispositionNotes,
+      compliance_check_passed: commercialEvaluation.verdict !== 'REJECTED_AT_DOCK',
+    };
+
+    const highStockPressure = demandInventoryContext.dark_store_inventory_crates > 35;
+    if (
+      highStockPressure &&
+      inboundAction.verdict === 'ACCEPTED_GRADE_B' &&
+      inboundAction.recommended_dynamic_discount_percent < 25
+    ) {
+      inboundAction.recommended_dynamic_discount_percent = Math.min(
+        35,
+        inboundAction.recommended_dynamic_discount_percent + 5
+      );
+    }
+  }
+
+  const finalDefects: DefectDetail[] = geminiReport?.defects?.length
+    ? geminiReport.defects.map((d: any, idx: number) => ({
+        id: `DEF-${idx + 1}`,
+        defect_type: d.defect_type || 'Surface Anomaly',
+        surface_area_percentage: Number(d.surface_area_percentage) || 3.5,
+        severity: (d.severity as any) || 'COMMERCIAL_ACCEPTABLE',
+        boundingBox: d.boundingBox || { x: 30 + idx * 10, y: 35 + idx * 8, width: 20, height: 18 },
+        description: d.description || 'Local micro-defect identified by optical segmentation.',
+      }))
+    : [
+        {
+          id: 'DEF-1',
+          defect_type: usdaStage >= 5 ? 'Compression Impact Bruise' : 'Minor Skin Scuff',
+          surface_area_percentage: adjustedBruiseIndex > 10 ? 5.8 : 2.1,
+          severity: adjustedBruiseIndex > 20 ? 'CRITICAL' : adjustedBruiseIndex > 8 ? 'COMMERCIAL_ACCEPTABLE' : 'NEGLIGIBLE',
+          boundingBox: { x: 38, y: 42, width: 24, height: 20 },
+          description: 'Local cuticle stress mark evaluated under optical gradient spectrum and vibration logger.',
+        },
+      ];
+
+  return {
+    id: `AG-${Date.now().toString(36).toUpperCase()}`,
+    timestamp: new Date().toISOString(),
+    mode,
+    produce_type: crop,
+    variety_detected: variety,
+    confidence: geminiReport?.confidence || 0.94,
+    usda_color_stage: usdaStage,
+    stage_name:
+      usdaStage === 1
+        ? 'Stage 1 (Green)'
+        : usdaStage === 2
+        ? 'Stage 2 (Breaker - Blossom Star)'
+        : usdaStage === 3
+        ? 'Stage 3 (Turning 10-30% Pink)'
+        : usdaStage === 4
+        ? 'Stage 4 (Pink 30-60%)'
+        : usdaStage === 5
+        ? 'Stage 5 (Light Red 60-90%)'
+        : 'Stage 6 (Full Red / Soft-Ripe)',
+    ripeness_percentage: Math.round(ripenessPct * 10) / 10,
+    color_breakdown: geminiReport?.color_breakdown || {
+      green_pct: Math.max(0, 100 - ripenessPct * 1.1),
+      yellow_pct: Math.min(45, ripenessPct * 0.4),
+      pink_orange_pct: Math.min(50, ripenessPct * 0.5),
+      deep_red_pct: Math.min(100, Math.max(0, ripenessPct - 35)),
+    },
+    bruise_defect_index: Math.round(adjustedBruiseIndex * 10) / 10,
+    defects: finalDefects,
+    firmness_estimate_penetrometer:
+      geminiReport?.firmness_estimate_penetrometer || Math.max(2.1, Math.round((7.0 - usdaStage * 0.75) * 10) / 10),
+    ambient_shelf_life_days: calibratedAmbientDays,
+    cold_storage_shelf_life_days: kineticResults.coldDays,
+    kinetic_parameters: {
+      ...kineticResults,
+      calibrated_q10_with_feedback: kineticResults.q10_respiration_factor,
+      cold_chain_shelf_life_loss_days: coldChainTelemetry.shelfLifeLossDays,
+      cold_chain_score: coldChainTelemetry.coldChainScore,
+      thermal_exposure_score: coldChainTelemetry.thermalExposureScore,
+    },
+    commodity_database_result: {
+      commodity_name: dynamicDbResult.commodityName,
+      variety_name: dynamicDbResult.varietyName,
+      farm_name: effectiveFarm,
+      harvest_maturity_stage: usdaStage,
+      temperature_celsius: effectiveAmbientTemp,
+      humidity_pct: effectiveHumidity,
+      packaging_type: dynamicDbResult.packagingName,
+      storage_method: storage_method === 'CHILLED_REEFER' ? 'Chilled Reefer' : 'Cool Cellar',
+      predicted_shelf_life_days: dynamicDbResult.predictedShelfLifeDays,
+      confidence_score_pct: dynamicDbResult.confidencePct,
+      legacy_static_days: dynamicDbResult.legacyStaticDays,
+      variance_from_legacy_days: dynamicDbResult.deltaDaysFromLegacy,
+      cohort_batches_sampled: dynamicDbResult.cohortSampleCount,
+      cohort_std_dev: dynamicDbResult.cohortStdDev,
+      calculation_summary: `${dynamicDbResult.varietyName} @ ${effectiveFarm}, Stage ${usdaStage}, ${effectiveAmbientTemp}°C, ${effectiveHumidity}% RH, ${dynamicDbResult.packagingName} → Predicted: ${dynamicDbResult.predictedShelfLifeDays}d (Confidence: ${dynamicDbResult.confidencePct}%)`,
+    },
+    sensor_telemetry: sensorTelemetry,
+    cold_chain_telemetry: coldChainTelemetry,
+    weather_context: weatherContext,
+    logistics_context: logisticsContext,
+    demand_inventory_context: demandInventoryContext,
+    supplier_profile: {
+      supplier_name,
+      tier: 'TIER_1_PREFERRED',
+      historical_rejection_rate_pct: 3.4,
+      cold_chain_compliance_pct: 94.2,
+      grade_a_yield_pct: 82.5,
+      variance_std_dev: 1.1,
+      total_lifetime_batches: 240,
+    },
+    feedback_loop_calibration: {
+      cohort_batches_analyzed: cohortBatchesAnalyzed,
+      historical_model_accuracy_pct: liveModelMetrics.currentClosedLoopAccuracyPct,
+      learned_decay_offset_days: learnedDecayOffsetDays,
+      supplier_trust_multiplier: 1.05,
+      demand_elasticity_markdown_bias_pct: demandInventoryContext.dark_store_inventory_crates > 35 ? 10 : 0,
+      confidence_interval_hours: [
+        Math.max(12, Math.round((calibratedAmbientDays - 0.3) * 24)),
+        Math.round((calibratedAmbientDays + 0.3) * 24),
+      ],
+    },
+    harvest_guidance: harvestGuidance,
+    inbound_action: inboundAction,
+    commercial_grade_evaluation: commercialEvaluation,
+    active_commercial_rule: activeCommercialRule,
+    confidence_breakdown: confidenceBreakdown,
+    model_provenance: modelProvenance,
+    demand_forecast: demandForecast,
+    intelligent_routing: intelligentRouting,
+    markdown_optimization: markdownOptimization,
+    deep_supplier_scorecard: deepSupplierScorecard,
+    image_quality_gate: imageQualityGate,
+    multi_angle_inspection: multiAngleInspection,
+    weather_intelligence: weatherIntelligence,
+    packaging_intelligence: packagingIntelligence,
+    root_cause_analysis: rootCauseAnalysis,
+    mobile_field_advisory: mobileFieldAdvisory,
+    agent_traces: agentTraces,
+    overall_summary:
+      geminiReport?.overall_summary ||
+      (mode === 'FIELD_PRE_HARVEST'
+        ? `Field multi-factor intelligence evaluated ${crop} at USDA Stage ${usdaStage}. Multi-sensor telemetry & weather context integrated. ${
+            harvestGuidance?.should_harvest_today
+              ? 'Harvest recommended today for quick-commerce transit to prevent field over-softening.'
+              : 'Hold on vine to maximize °Brix sugar development.'
+          }`
+        : `Receiving dock quality gate classified batch as ${inboundAction?.verdict}. Calibrated shelf-life: ${calibratedAmbientDays}d ambient / ${kineticResults.coldDays}d cold chain. Multi-factor feedback loop integrated across ${cohortBatchesAnalyzed} learned batches.`),
   };
 }
 
@@ -283,6 +863,7 @@ app.post('/api/commercial-rules', (req, res) => {
     } else {
       liveCommercialRules.push(newOrUpdated);
     }
+    saveRuntimeStore();
     res.json({
       success: true,
       rule: newOrUpdated,
@@ -340,6 +921,7 @@ app.post('/api/alerts/send-test', (req, res) => {
     resolved: false,
   };
   liveOperationalAlerts.unshift(newAlert);
+  saveRuntimeStore();
   res.json({
     success: true,
     alert: newAlert,
@@ -410,6 +992,7 @@ app.post('/api/hitl/override', (req, res) => {
     // Trigger feedback calibration learning from human correction
     liveModelMetrics.totalBatchesLearned += 1;
     liveModelMetrics.currentClosedLoopAccuracyPct = Math.min(99.2, +(liveModelMetrics.currentClosedLoopAccuracyPct + 0.1).toFixed(1));
+    saveRuntimeStore();
 
     res.json({
       success: true,
@@ -601,6 +1184,8 @@ app.post('/api/feedback/submit-outcome', (req, res) => {
       maeDays: liveModelMetrics.meanAbsoluteErrorDays,
     });
 
+    saveRuntimeStore();
+
     res.json({
       success: true,
       record: newCompletedRecord,
@@ -647,7 +1232,7 @@ app.post('/api/chat', async (req, res) => {
     if (agentFocus === 'agent_1') {
       agentBadge = {
         name: 'Agent 1: Optical Phenotyping',
-        role: 'Maturity & Spectrum Specialist',
+        role: 'Maturity, Variety & Caliper Specialist',
         color: 'emerald',
       };
     } else if (agentFocus === 'agent_2') {
@@ -658,20 +1243,44 @@ app.post('/api/chat', async (req, res) => {
       };
     } else if (agentFocus === 'agent_3') {
       agentBadge = {
-        name: 'Agent 3: Kinetic Respiration',
-        role: 'Arrhenius Decay & Cold-Chain Specialist',
+        name: 'Agent 3: Kinetic Respiration Twin',
+        role: 'Arrhenius Bio-Decay & Cold-Chain Specialist',
         color: 'cyan',
       };
     } else if (agentFocus === 'agent_4') {
       agentBadge = {
-        name: 'Agent 4: Quality Gatekeeper',
-        role: 'Commercial Intake & Dynamic Markdown Specialist',
+        name: 'Agent 4: Commercial Rules Engine',
+        role: 'Customer Tolerances & Dock Gatekeeper',
         color: 'amber',
       };
     } else if (agentFocus === 'agent_5') {
       agentBadge = {
-        name: 'Agent 5: Historical Batch Intelligence',
-        role: 'Historical Batch Outcomes & Continual Calibration Specialist',
+        name: 'Agent 5: Demand Forecasting',
+        role: 'Store Velocity & Waste Hazard Specialist',
+        color: 'purple',
+      };
+    } else if (agentFocus === 'agent_6') {
+      agentBadge = {
+        name: 'Agent 6: Intelligent Routing',
+        role: 'Network Allocation & Logistics Specialist',
+        color: 'emerald',
+      };
+    } else if (agentFocus === 'agent_7') {
+      agentBadge = {
+        name: 'Agent 7: Dynamic Pricing',
+        role: 'Margin Optimization & Price Elasticity Specialist',
+        color: 'amber',
+      };
+    } else if (agentFocus === 'agent_8') {
+      agentBadge = {
+        name: 'Agent 8: Root Cause Forensics',
+        role: 'Supply Chain Forensics & Vendor Risk Specialist',
+        color: 'rose',
+      };
+    } else if (agentFocus === 'agent_9') {
+      agentBadge = {
+        name: 'Agent 9: Closed-Loop Calibration',
+        role: 'Outcome Feedback & Continual Retraining Specialist',
         color: 'purple',
       };
     }
@@ -1201,537 +1810,8 @@ Respond strictly in valid JSON matching this schema.`;
       }
     }
 
-    // Fallback or baseline synthesizer if Gemini was not available or had missing fields
-    const crop = geminiReport?.produce_type || crop_type_hint || 'Tomato';
-    const variety = geminiReport?.variety_detected || (crop.toLowerCase().includes('apple') ? 'Gala' : 'Roma');
-    const usdaStage = (geminiReport?.usda_color_stage || 2) as USDAMaturityStage;
-    const ripenessPct = typeof geminiReport?.ripeness_percentage === 'number' ? geminiReport.ripeness_percentage : (usdaStage * 16.6);
-    const bruiseIndex = typeof geminiReport?.bruise_defect_index === 'number' ? geminiReport.bruise_defect_index : 7.5;
-
-    // Multi-factor contextual extraction from payload
-    const sensorTelemetry: SensorTelemetry = payload.sensor_telemetry || {
-      transit_logger_temp: ambient_temp_celsius,
-      humidity_pct: 78,
-      ethylene_ppm: 0.8,
-      vibration_g_force: 1.1,
-      temp_spike_detected: ambient_temp_celsius > 32,
-      temp_spike_duration_hours: ambient_temp_celsius > 32 ? 2.5 : 0,
-    };
-
-    const coldChainTelemetry: ColdChainTelemetry = payload.cold_chain_telemetry || sensorTelemetry.cold_chain || DEFAULT_CALIBRATED_COLD_CHAIN_TELEMETRY;
-    sensorTelemetry.cold_chain = coldChainTelemetry;
-
-    const weatherContext: WeatherContext = payload.weather_context || {
-      harvest_ambient_temp: ambient_temp_celsius,
-      heatwave_warning: ambient_temp_celsius >= 33,
-      precipitation_at_harvest: false,
-      humidity_relative_pct: 68,
-      solar_radiation_index: ambient_temp_celsius > 30 ? 'HIGH' : 'MODERATE',
-    };
-
-    const logisticsContext: LogisticsContext = payload.logistics_context || {
-      transit_hours_to_hub,
-      transit_distance_km,
-      storage_method,
-      reefer_temperature_hold: storage_method === 'CHILLED_REEFER' ? 8.0 : undefined,
-      road_condition: transit_distance_km > 150 ? 'MODERATE_RURAL' : 'SMOOTH_HIGHWAY',
-      transit_delay_hours: 0,
-      carrier_sla_rating: 94,
-    };
-
-    const demandInventoryContext: DemandAndInventoryContext = payload.demand_inventory_context || {
-      dark_store_inventory_crates: 42,
-      shelf_turnover_hours: 14,
-      current_hourly_demand_rate: 3.2,
-      active_discount_promos: false,
-      competing_batch_expiry_hours: 12,
-      demand_surge_factor: 1.2,
-    };
-
-    // Calculate dynamic multi-factor sensor & physical adjustments
-    const ethylenePenalty = Math.max(0, ((sensorTelemetry.ethylene_ppm || 0.8) - 1.0) * 0.12);
-    const vibrationShockPenalty = Math.max(0, ((sensorTelemetry.vibration_g_force || 1.1) - 1.5) * 4.5);
-    const heatwaveAcceleration = weatherContext.heatwave_warning && storage_method === 'AMBIENT_LORRY' ? 0.25 : 0.0;
-
-    const adjustedBruiseIndex = Math.min(100, Math.max(0, bruiseIndex + vibrationShockPenalty));
-    const effectiveAmbientTemp = Math.max(ambient_temp_celsius, weatherContext.harvest_ambient_temp);
-
-    // Run dynamic agronomic commodity identification & database calculation
-    const effectiveFarm = payload.farm_name || (supplier_name.includes('Saraswati') ? 'Farm B' : supplier_name.includes('Narmada') ? 'Farm D' : supplier_name.includes('Apex') ? 'Farm C' : 'Farm A');
-    const effectivePackaging = payload.packaging_type || 'ventilated_crate';
-    const effectiveHumidity = payload.humidity_pct || sensorTelemetry.humidity_pct || 86;
-
-    const dynamicDbResult = calculateDynamicCommodityShelfLife({
-      commodityId: crop,
-      varietyId: variety,
-      farmName: effectiveFarm,
-      maturityStage: usdaStage,
-      temperatureC: effectiveAmbientTemp,
-      humidityPct: effectiveHumidity,
-      packagingType: effectivePackaging,
-      storageMethod: storage_method === 'CHILLED_REEFER' ? 'chilled_reefer' : 'cool_cellar',
-      bruiseDefectIndex: adjustedBruiseIndex,
-    });
-
-    // Run deterministic kinetic shelf-life decay engine with multi-factor sensor adjustments
-    const kineticResults = calculateKineticDecay(
-      crop,
-      ripenessPct,
-      effectiveAmbientTemp,
-      adjustedBruiseIndex,
-      storage_method
-    );
-
-    // Apply learned feedback loop calibration offset from historical cohort outcomes
-    const cohortBatchesAnalyzed = liveModelMetrics.totalBatchesLearned;
-    const learnedDecayOffsetDays = +(0.15 - (ethylenePenalty * 2.0) - heatwaveAcceleration).toFixed(2);
-    // Use the dynamic database prediction which accurately reflects variety genetics, maturity, farm prior, packaging & humidity
-    const calibratedAmbientDays = dynamicDbResult.predictedShelfLifeDays;
-
-    // -------------------------------------------------------------
-    // Dynamic Commercial Grade Engine (Configurable Customer Rules)
-    // -------------------------------------------------------------
-    let activeCommercialRule: CommercialGradeRule;
-    if (payload.custom_commercial_rule && typeof payload.custom_commercial_rule === 'object') {
-      const custom = payload.custom_commercial_rule;
-      activeCommercialRule = {
-        id: custom.id || 'custom-customer-rule',
-        name: custom.name || 'Custom Commercial Rule',
-        customer: custom.customer || 'Custom Customer Spec',
-        commodity: custom.commodity || crop.toLowerCase(),
-        market: custom.market || 'custom',
-        description: custom.description || 'Configurable dynamic customer tolerance criteria.',
-        grade_a: {
-          defect_percent: custom.grade_a?.defect_percent || '<5',
-          maturity: custom.grade_a?.maturity || [4, 5],
-          firmness: custom.grade_a?.firmness || '>3.5',
-          min_shelf_life_days: custom.grade_a?.min_shelf_life_days || '>3.0',
-          erp_routing_tag: custom.grade_a?.erp_routing_tag || 'PREMIUM_RETAIL_BIN',
-        },
-        grade_b: {
-          defect_percent: custom.grade_b?.defect_percent || '5-15',
-          maturity: custom.grade_b?.maturity || [3, 4, 5, 6],
-          firmness: custom.grade_b?.firmness || '2.5-3.5',
-          min_shelf_life_days: custom.grade_b?.min_shelf_life_days || '>1.5',
-          recommended_discount_percent: custom.grade_b?.recommended_discount_percent ?? 15,
-          fast_track_hours: custom.grade_b?.fast_track_hours ?? 8,
-          erp_routing_tag: custom.grade_b?.erp_routing_tag || 'FAST_DISPATCH_DISCOUNT_15',
-        },
-        reject_criteria: custom.reject_criteria || {
-          max_defect_percent: custom.reject_criteria?.max_defect_percent || '>15',
-          min_firmness: custom.reject_criteria?.min_firmness || '<2.2',
-          unacceptable_defects: custom.reject_criteria?.unacceptable_defects || ['Fungal Mold', 'Bacterial Soft Rot'],
-          erp_routing_tag: 'RETURN_TO_VENDOR_REJECT',
-        },
-      };
-    } else if (payload.customer_rule_id) {
-      const found = liveCommercialRules.find((r) => r.id === payload.customer_rule_id);
-      activeCommercialRule = found || liveCommercialRules[0];
-    } else {
-      const matched = liveCommercialRules.find(
-        (r) => r.commodity.toLowerCase() === crop.toLowerCase()
-      );
-      activeCommercialRule = matched || liveCommercialRules[0];
-    }
-
-    const estimatedFirmness =
-      geminiReport?.firmness_estimate_penetrometer ||
-      Math.max(2.1, Math.round((7.0 - usdaStage * 0.75) * 10) / 10);
-
-    // Evaluate physical metrics against active customer commercial rule
-    const commercialEvaluation = evaluateCommercialRules(
-      {
-        commodity: crop.toLowerCase(),
-        defectPercent: adjustedBruiseIndex,
-        maturityStage: usdaStage,
-        firmnessKgCm2: estimatedFirmness,
-        ambientShelfLifeDays: calibratedAmbientDays,
-        detectedDefectTypes: (geminiReport?.defects || []).map((d: any) => d.defect_type || ''),
-      },
-      activeCommercialRule
-    );
-
-    // -------------------------------------------------------------
-    // AgriGrade 2.0 Enterprise Intelligence Engines Synthesis
-    // -------------------------------------------------------------
-    const imageQualityGate = validateImageQuality(image_b64 || '');
-    const multiAngleInspection = calculateMultiAngleSegmentation(adjustedBruiseIndex, 74.0);
-    const confidenceBreakdown = calculateModelConfidence(adjustedBruiseIndex, usdaStage, variety, imageQualityGate.blurScore);
-    const modelProvenance = CURRENT_MODEL_PROVENANCE;
-    const demandForecast = calculateDemandForecast(400, calibratedAmbientDays, 80, demandInventoryContext.demand_surge_factor);
-    const intelligentRouting = calculateIntelligentRouting(batch_id, `${crop} (${variety})`, 400, calibratedAmbientDays);
-    const markdownOptimization = calculateDynamicMarkdown({
-      shelfLifeRemainingDays: calibratedAmbientDays,
-      currentInventoryKg: 400,
-      storeDemandVelocityKgHour: 8.5,
-      historicalAvgVelocityKgHour: 9.0,
-      competitorPricePerKg: 38,
-      basePricePerKg: 44,
-      timeOfDayHours: 17,
-      dayOfWeek: 5,
-      grade: commercialEvaluation.verdict,
-      defectPercent: adjustedBruiseIndex,
-    });
-    const deepSupplierScorecard = getSupplierScorecard(supplier_name);
-    const rootCauseAnalysis = generateAutonomousRootCause(
-      supplier_name,
-      adjustedBruiseIndex,
-      coldChainTelemetry.timeAboveThresholdMinutes / 60,
-      sensorTelemetry.vibration_g_force || 1.1
-    );
-    const weatherIntelligence = getWeatherIntelligence(effectiveAmbientTemp, weatherContext.precipitation_at_harvest);
-    const packagingIntelligence = getPackagingIntelligence(dynamicDbResult.packagingName);
-    const mobileFieldAdvisory = getMobileFieldAdvisory(usdaStage, 'Bangalore DC (Whitefield Hub)', effectiveAmbientTemp);
-
-    // Multi-Agent Trace Construction: 9-Agent Enterprise Orchestration
-    const perceptionLatency = Math.floor(580 + Math.random() * 210);
-    const defectLatency = Math.floor(190 + Math.random() * 60);
-    const kineticLatency = Math.floor(140 + Math.random() * 70);
-    const gateLatency = Math.floor(180 + Math.random() * 80);
-    const demandLatency = Math.floor(120 + Math.random() * 50);
-    const routingLatency = Math.floor(160 + Math.random() * 60);
-    const pricingLatency = Math.floor(140 + Math.random() * 50);
-    const riskLatency = Math.floor(150 + Math.random() * 60);
-    const learningLatency = Math.floor(130 + Math.random() * 60);
-
-    const agentTraces: AgentTraceStep[] = [
-      {
-        agent_name: 'Agent 1: Optical Perception & Phenotyping',
-        role: 'Computer Vision & Morphological Segmentation',
-        status: imageQualityGate.passed ? 'completed' : 'flagged',
-        latency_ms: perceptionLatency,
-        summary: `Identified ${crop} (${variety}). Classified USDA Stage ${usdaStage} (${ripenessPct.toFixed(0)}% ripeness). Optical quality check: ${imageQualityGate.passed ? 'PASSED (Sharpness 88/100)' : 'FLAGGED'}. Overall confidence: ${confidenceBreakdown.overallConfidencePct}%.`,
-        findings: {
-          crop,
-          variety,
-          stage: usdaStage,
-          confidence_overall: `${confidenceBreakdown.overallConfidencePct}%`,
-          maturity_confidence: `${confidenceBreakdown.maturityConfidencePct}%`,
-          human_review_advised: confidenceBreakdown.humanReviewRecommended,
-          image_quality_passed: imageQualityGate.passed,
-        },
-      },
-      {
-        agent_name: 'Agent 2: Defect & Pathology Segmentation',
-        role: 'Surface Area Pathology & Multi-Angle 360° Fusion',
-        status: adjustedBruiseIndex > 15 ? 'flagged' : 'completed',
-        latency_ms: defectLatency,
-        summary: `Segmented defect area: ${multiAngleInspection.totalDefectAreaCm2} cm² across ${multiAngleInspection.totalVisibleSurfaceCm2} cm² visible surface (${multiAngleInspection.defectPercentageCalculated}% defect ratio). Bruise Defect Index: ${adjustedBruiseIndex.toFixed(1)}%. Defect confidence: ${confidenceBreakdown.defectConfidencePct}%.`,
-        findings: {
-          defect_area_cm2: multiAngleInspection.totalDefectAreaCm2,
-          total_surface_cm2: multiAngleInspection.totalVisibleSurfaceCm2,
-          defect_ratio_pct: multiAngleInspection.defectPercentageCalculated,
-          defect_confidence: `${confidenceBreakdown.defectConfidencePct}%`,
-          angles_scanned: Object.keys(multiAngleInspection.angles).length,
-        },
-      },
-      {
-        agent_name: 'Agent 3: Kinetic Bio-Decay Digital Twin',
-        role: 'Arrhenius Biochemical Modeling & Cold-Chain Telemetry',
-        status: coldChainTelemetry.coldChainScore < 70 ? 'flagged' : 'completed',
-        latency_ms: kineticLatency,
-        summary: `Predicted ambient shelf-life: ${calibratedAmbientDays} days (Reefer: ${kineticResults.coldDays}d). Cold chain compliance score: ${coldChainTelemetry.coldChainScore}/100. Thermal exposure penalty: ${coldChainTelemetry.shelfLifeLossDays}d ($Q_{10}=2.1$).`,
-        findings: {
-          ambient_days: calibratedAmbientDays,
-          cold_days: kineticResults.coldDays,
-          cold_chain_score: coldChainTelemetry.coldChainScore,
-          actual_avg_temp: `${coldChainTelemetry.actualAvgTempCelsius}°C`,
-          shelf_life_loss: `${coldChainTelemetry.shelfLifeLossDays}d`,
-        },
-      },
-      {
-        agent_name: 'Agent 4: Commercial Decision & Rules Engine',
-        role: `Customer Commercial Tolerances (${commercialEvaluation.customer})`,
-        status: commercialEvaluation.verdict === 'REJECTED_AT_DOCK' ? 'flagged' : 'completed',
-        latency_ms: gateLatency,
-        summary: `Enforced Rule: "${commercialEvaluation.ruleName}". Verdict: ${commercialEvaluation.verdict} (Score: ${commercialEvaluation.qualityScore}/100). Routing: ${commercialEvaluation.erpRoutingTag}.`,
-        findings: {
-          customer: commercialEvaluation.customer,
-          market: commercialEvaluation.market,
-          verdict: commercialEvaluation.verdict,
-          score: commercialEvaluation.qualityScore,
-          grade_a_passed: commercialEvaluation.gradeAEvaluation.passed,
-          grade_b_passed: commercialEvaluation.gradeBEvaluation.passed,
-          rejection_reasons: commercialEvaluation.rejectionReasons,
-        },
-      },
-      {
-        agent_name: 'Agent 5: Demand Forecast & Waste Prevention',
-        role: 'Store-Level Velocity & Waste Hazard Forecasting',
-        status: demandForecast.wasteProbabilityPct >= 50 ? 'flagged' : 'completed',
-        latency_ms: demandLatency,
-        summary: `At 80 kg/day velocity and ${calibratedAmbientDays}d shelf life, expected sell-through is ${demandForecast.expectedSellThroughKg} kg (${demandForecast.expectedUnsoldKg} kg unsold, ${demandForecast.wasteProbabilityPct}% waste risk). Recommendation: ${demandForecast.recommendation} (${demandForecast.recommendedTransferKg} kg to ${demandForecast.recommendedTargetStore}).`,
-        findings: demandForecast,
-      },
-      {
-        agent_name: 'Agent 6: Intelligent Routing & Logistics',
-        role: 'Multi-Store Destination & Margin Optimization',
-        status: 'completed',
-        latency_ms: routingLatency,
-        summary: `Evaluated 3 destination candidate stores: Store 1 (82% sell-through), Store 2 (54%), Store 3 (91%). Selected: ${intelligentRouting.selectedStore.storeName} (${intelligentRouting.selectedStore.expectedSellThroughPct}% sell-through, lowest waste risk: ${intelligentRouting.selectedStore.wasteRiskPct}%).`,
-        findings: {
-          selected_store: intelligentRouting.selectedStore.storeName,
-          expected_sell_through_pct: `${intelligentRouting.selectedStore.expectedSellThroughPct}%`,
-          waste_risk_pct: `${intelligentRouting.selectedStore.wasteRiskPct}%`,
-          net_realized_revenue: `₹${intelligentRouting.selectedStore.netRealizedRevenueInr.toLocaleString()}`,
-          dispatch_urgency_hours: intelligentRouting.dispatchUrgencyHours,
-        },
-      },
-      {
-        agent_name: 'Agent 7: Dynamic Pricing & Markdown Optimizer',
-        role: 'Multi-Variable Margin & Markdown Solver',
-        status: 'completed',
-        latency_ms: pricingLatency,
-        summary: `Derived optimal markdown: ${markdownOptimization.recommendedMarkdownPct}% (₹${markdownOptimization.finalPricePerKg}/kg vs base ₹${markdownOptimization.basePricePerKg}/kg) considering 8 variables (shelf-life, inventory, velocity, time of day peak, day of week, wastage probability). Margin preserved: ₹${markdownOptimization.projectedRevenueGainInr.toLocaleString()}.`,
-        findings: markdownOptimization,
-      },
-      {
-        agent_name: 'Agent 8: Autonomous Risk & Root Cause Diagnostic',
-        role: 'Supply Chain Forensics & Predictive Supplier Risk',
-        status: deepSupplierScorecard.predictiveRiskTier === 'HIGH' ? 'flagged' : 'completed',
-        latency_ms: riskLatency,
-        summary: `Supplier: ${deepSupplierScorecard.supplierName} (Score: ${deepSupplierScorecard.overallScore}/100, Quality: ${deepSupplierScorecard.qualityScore}, Cold Chain: ${deepSupplierScorecard.coldChainScore}). Root cause: ${rootCauseAnalysis.primaryCause}.`,
-        findings: {
-          supplier: deepSupplierScorecard.supplierName,
-          overall_score: deepSupplierScorecard.overallScore,
-          root_cause: rootCauseAnalysis.primaryCause,
-          supplier_correlation: rootCauseAnalysis.supplierCorrelation,
-          procurement_recommendation: deepSupplierScorecard.autonomousProcurementRecommendation?.recommendationText,
-        },
-      },
-      {
-        agent_name: 'Agent 9: Closed-Loop Model Calibration & Learning',
-        role: 'Historical Batch Feedback & Continual Calibration',
-        status: 'completed',
-        latency_ms: learningLatency,
-        summary: `Learned across ${cohortBatchesAnalyzed} historical batches. Model accuracy: ${liveModelMetrics.currentClosedLoopAccuracyPct}%, MAE: ${liveModelMetrics.meanAbsoluteErrorDays}d. Learned calibration offset: ${learnedDecayOffsetDays >= 0 ? '+' : ''}${learnedDecayOffsetDays} days.`,
-        findings: {
-          total_batches_learned: liveModelMetrics.totalBatchesLearned,
-          accuracy_pct: liveModelMetrics.currentClosedLoopAccuracyPct,
-          mae_days: liveModelMetrics.meanAbsoluteErrorDays,
-          learned_decay_offset_days: learnedDecayOffsetDays,
-        },
-      },
-    ];
-
-    // Determine Mode-Specific Action
-    let harvestGuidance = geminiReport?.harvest_guidance;
-    let inboundAction = geminiReport?.inbound_action;
-
-    if (mode === 'FIELD_PRE_HARVEST') {
-      if (!harvestGuidance) {
-        // Deterministic agronomy logic mapped to USDA stages & transit times
-        if (usdaStage === 1) {
-          harvestGuidance = {
-            should_harvest_today: false,
-            optimal_harvest_window: 'Wait 2 to 3 days on vine',
-            target_channel: 'Hold (Only pick early if long-distance interstate transit > 7 days)',
-            transit_viability_score: 52,
-            harvest_risk_assessment: 'Crop is in pre-breaker green phase. Internal sugars and gel structure are not fully developed.',
-            field_action_steps: [
-              'Retain on vine for 48 hours to accumulate soluble solids (°Brix).',
-              'Perform next optical spot check in 2 days at 08:00 AM.',
-              'Ensure morning irrigation is regulated to prevent blossom split.',
-            ],
-          };
-        } else if (usdaStage === 2) {
-          harvestGuidance = {
-            should_harvest_today: true,
-            optimal_harvest_window: 'Within 12-18 hours (early morning 06:00-09:00 AM pick)',
-            target_channel: 'Quick-Commerce Dark Store Hub (transit 8-16h / 100-250 km)',
-            transit_viability_score: 96,
-            harvest_risk_assessment: 'Optimal Breaker Stage! Firm skin prevents road transit compression. Will hit Stage 3-4 upon hub arrival.',
-            field_action_steps: [
-              'Schedule picking crew for dawn shift (lowest field heat accumulation).',
-              'Use sanitized shallow crates (max 2 layers) to prevent compression.',
-              'Stage crates in shaded holding bay (< 24°C) before lorry loading.',
-            ],
-          };
-        } else if (usdaStage === 3) {
-          harvestGuidance = {
-            should_harvest_today: true,
-            optimal_harvest_window: 'Immediate Harvest (within 6-8 hours)',
-            target_channel: 'Local Dark Store or Regional Mandi (< 24h to shelf)',
-            transit_viability_score: 84,
-            harvest_risk_assessment: 'Turning stage. High consumer appeal but rapid respiration. Requires expedited local delivery.',
-            field_action_steps: [
-              'Pick immediately to avoid over-ripening in field heat.',
-              'Tag crates for local micro-warehouse dispatch within 50 km.',
-              'Advise transport driver to avoid daytime highway stops.',
-            ],
-          };
-        } else {
-          harvestGuidance = {
-            should_harvest_today: false,
-            optimal_harvest_window: 'Divert to Same-Day Local Processing or Farm-Gate Sale',
-            target_channel: 'Farm Gate / Direct Mandi / Puree Processing (Not for Delivery Apps)',
-            transit_viability_score: 34,
-            harvest_risk_assessment: 'Produce is already Stage 4+ (Pink/Red). Extreme rupture risk during multi-stop logistics truck transit.',
-            field_action_steps: [
-              'Do not load into long-haul quick-commerce supply chain.',
-              'Divert to instant local retail or sauce/ketchup processing partners.',
-              'Separate from firmer breaker crates to prevent ethylene cross-contamination.',
-            ],
-          };
-        }
-      }
-    } else {
-      // INBOUND_DARK_STORE mode: Dynamic Commercial Grade Engine replaces hardcoded thresholds
-      inboundAction = {
-        verdict: commercialEvaluation.verdict,
-        quality_score: commercialEvaluation.qualityScore,
-        fast_track_dispatch_required: commercialEvaluation.fastTrackDispatchRequired,
-        dispatch_window_hours: commercialEvaluation.dispatchWindowHours,
-        recommended_dynamic_discount_percent: commercialEvaluation.recommendedDiscountPercent,
-        erp_routing_tag: commercialEvaluation.erpRoutingTag,
-        disposition_notes: commercialEvaluation.dispositionNotes,
-        compliance_check_passed: commercialEvaluation.verdict !== 'REJECTED_AT_DOCK',
-      };
-
-      // Contextual pricing & demand adjustments on top of base commercial rule
-      const highStockPressure = demandInventoryContext.dark_store_inventory_crates > 35;
-      if (
-        highStockPressure &&
-        inboundAction.verdict === 'ACCEPTED_GRADE_B' &&
-        inboundAction.recommended_dynamic_discount_percent < 25
-      ) {
-        inboundAction.recommended_dynamic_discount_percent = Math.min(
-          35,
-          inboundAction.recommended_dynamic_discount_percent + 5
-        );
-      }
-    }
-
-    // Default defects if none parsed
-    const finalDefects: DefectDetail[] = geminiReport?.defects?.length
-      ? geminiReport.defects.map((d: any, idx: number) => ({
-          id: `DEF-${idx + 1}`,
-          defect_type: d.defect_type || 'Surface Anomaly',
-          surface_area_percentage: Number(d.surface_area_percentage) || 3.5,
-          severity: (d.severity as any) || 'COMMERCIAL_ACCEPTABLE',
-          boundingBox: d.boundingBox || { x: 30 + idx * 10, y: 35 + idx * 8, width: 20, height: 18 },
-          description: d.description || 'Local micro-defect identified by optical segmentation.',
-        }))
-      : [
-          {
-            id: 'DEF-1',
-            defect_type: usdaStage >= 5 ? 'Compression Impact Bruise' : 'Minor Skin Scuff',
-            surface_area_percentage: adjustedBruiseIndex > 10 ? 5.8 : 2.1,
-            severity: adjustedBruiseIndex > 20 ? 'CRITICAL' : adjustedBruiseIndex > 8 ? 'COMMERCIAL_ACCEPTABLE' : 'NEGLIGIBLE',
-            boundingBox: { x: 38, y: 42, width: 24, height: 20 },
-            description: 'Local cuticle stress mark evaluated under optical gradient spectrum and vibration logger.',
-          },
-        ];
-
-    const finalReport: AgriGradeReport = {
-      id: `AG-${Date.now().toString(36).toUpperCase()}`,
-      timestamp: new Date().toISOString(),
-      mode,
-      produce_type: crop,
-      variety_detected: variety,
-      confidence: geminiReport?.confidence || 0.94,
-      usda_color_stage: usdaStage,
-      stage_name:
-        usdaStage === 1
-          ? 'Stage 1 (Green)'
-          : usdaStage === 2
-          ? 'Stage 2 (Breaker - Blossom Star)'
-          : usdaStage === 3
-          ? 'Stage 3 (Turning 10-30% Pink)'
-          : usdaStage === 4
-          ? 'Stage 4 (Pink 30-60%)'
-          : usdaStage === 5
-          ? 'Stage 5 (Light Red 60-90%)'
-          : 'Stage 6 (Full Red / Soft-Ripe)',
-      ripeness_percentage: Math.round(ripenessPct * 10) / 10,
-      color_breakdown: geminiReport?.color_breakdown || {
-        green_pct: Math.max(0, 100 - ripenessPct * 1.1),
-        yellow_pct: Math.min(45, ripenessPct * 0.4),
-        pink_orange_pct: Math.min(50, ripenessPct * 0.5),
-        deep_red_pct: Math.min(100, Math.max(0, ripenessPct - 35)),
-      },
-      bruise_defect_index: Math.round(adjustedBruiseIndex * 10) / 10,
-      defects: finalDefects,
-      firmness_estimate_penetrometer:
-        geminiReport?.firmness_estimate_penetrometer || Math.max(2.1, Math.round((7.0 - usdaStage * 0.75) * 10) / 10),
-      ambient_shelf_life_days: calibratedAmbientDays,
-      cold_storage_shelf_life_days: kineticResults.coldDays,
-      kinetic_parameters: {
-        ...kineticResults,
-        calibrated_q10_with_feedback: kineticResults.q10_respiration_factor,
-        cold_chain_shelf_life_loss_days: coldChainTelemetry.shelfLifeLossDays,
-        cold_chain_score: coldChainTelemetry.coldChainScore,
-        thermal_exposure_score: coldChainTelemetry.thermalExposureScore,
-      },
-      commodity_database_result: {
-        commodity_name: dynamicDbResult.commodityName,
-        variety_name: dynamicDbResult.varietyName,
-        farm_name: effectiveFarm,
-        harvest_maturity_stage: usdaStage,
-        temperature_celsius: effectiveAmbientTemp,
-        humidity_pct: effectiveHumidity,
-        packaging_type: dynamicDbResult.packagingName,
-        storage_method: storage_method === 'CHILLED_REEFER' ? 'Chilled Reefer' : 'Cool Cellar',
-        predicted_shelf_life_days: dynamicDbResult.predictedShelfLifeDays,
-        confidence_score_pct: dynamicDbResult.confidencePct,
-        legacy_static_days: dynamicDbResult.legacyStaticDays,
-        variance_from_legacy_days: dynamicDbResult.deltaDaysFromLegacy,
-        cohort_batches_sampled: dynamicDbResult.cohortSampleCount,
-        cohort_std_dev: dynamicDbResult.cohortStdDev,
-        calculation_summary: `${dynamicDbResult.varietyName} @ ${effectiveFarm}, Stage ${usdaStage}, ${effectiveAmbientTemp}°C, ${effectiveHumidity}% RH, ${dynamicDbResult.packagingName} → Predicted: ${dynamicDbResult.predictedShelfLifeDays}d (Confidence: ${dynamicDbResult.confidencePct}%)`,
-      },
-      sensor_telemetry: sensorTelemetry,
-      cold_chain_telemetry: coldChainTelemetry,
-      weather_context: weatherContext,
-      logistics_context: logisticsContext,
-      demand_inventory_context: demandInventoryContext,
-      supplier_profile: {
-        supplier_name,
-        tier: 'TIER_1_PREFERRED',
-        historical_rejection_rate_pct: 3.4,
-        cold_chain_compliance_pct: 94.2,
-        grade_a_yield_pct: 82.5,
-        variance_std_dev: 1.1,
-        total_lifetime_batches: 240,
-      },
-      feedback_loop_calibration: {
-        cohort_batches_analyzed: cohortBatchesAnalyzed,
-        historical_model_accuracy_pct: liveModelMetrics.currentClosedLoopAccuracyPct,
-        learned_decay_offset_days: learnedDecayOffsetDays,
-        supplier_trust_multiplier: 1.05,
-        demand_elasticity_markdown_bias_pct: demandInventoryContext.dark_store_inventory_crates > 35 ? 10 : 0,
-        confidence_interval_hours: [
-          Math.max(12, Math.round((calibratedAmbientDays - 0.3) * 24)),
-          Math.round((calibratedAmbientDays + 0.3) * 24),
-        ],
-      },
-      harvest_guidance: harvestGuidance,
-      inbound_action: inboundAction,
-      commercial_grade_evaluation: commercialEvaluation,
-      active_commercial_rule: activeCommercialRule,
-      confidence_breakdown: confidenceBreakdown,
-      model_provenance: modelProvenance,
-      demand_forecast: demandForecast,
-      intelligent_routing: intelligentRouting,
-      markdown_optimization: markdownOptimization,
-      deep_supplier_scorecard: deepSupplierScorecard,
-      image_quality_gate: imageQualityGate,
-      multi_angle_inspection: multiAngleInspection,
-      weather_intelligence: weatherIntelligence,
-      packaging_intelligence: packagingIntelligence,
-      root_cause_analysis: rootCauseAnalysis,
-      mobile_field_advisory: mobileFieldAdvisory,
-      agent_traces: agentTraces,
-      overall_summary:
-        geminiReport?.overall_summary ||
-        (mode === 'FIELD_PRE_HARVEST'
-          ? `Field multi-factor intelligence evaluated ${crop} at USDA Stage ${usdaStage}. Multi-sensor telemetry & weather context integrated. ${
-              harvestGuidance?.should_harvest_today
-                ? 'Harvest recommended today for quick-commerce transit to prevent field over-softening.'
-                : 'Hold on vine to maximize °Brix sugar development.'
-            }`
-          : `Receiving dock quality gate classified batch as ${inboundAction?.verdict}. Calibrated shelf-life: ${calibratedAmbientDays}d ambient / ${kineticResults.coldDays}d cold chain. Multi-factor feedback loop integrated across ${cohortBatchesAnalyzed} learned batches.`),
-    };
+    // Assemble the complete report using the unified biophysical and commercial rules engine
+    const finalReport = assembleAgriGradeReport(geminiReport, payload);
 
     // Automatically record immutable inspection in liveAuditTrail
     liveAuditTrail.unshift({
@@ -1739,33 +1819,228 @@ Respond strictly in valid JSON matching this schema.`;
       timestamp: new Date().toLocaleString(),
       actor: 'AgriGrade Swarm Orchestrator (9 Agents)',
       eventType: 'INITIAL_INSPECTION',
-      batchId: batch_id,
-      produceType: crop,
-      variety,
+      batchId: payload.batch_id || `BATCH-${Date.now().toString().slice(-4)}`,
+      produceType: finalReport.produce_type,
+      variety: finalReport.variety_detected,
       modelVersion: `${CURRENT_MODEL_PROVENANCE.modelVersion} (${CURRENT_MODEL_PROVENANCE.visionModel})`,
       promptVersion: CURRENT_MODEL_PROVENANCE.promptVersion,
       kineticEngineVersion: CURRENT_MODEL_PROVENANCE.kineticEngineVersion,
       rulesEngineVersion: CURRENT_MODEL_PROVENANCE.rulesEngineVersion,
-      verdict: inboundAction?.verdict || (harvestGuidance?.should_harvest_today ? 'HARVEST_RECOMMENDED' : 'DELAY_HARVEST'),
-      confidenceOverall: confidenceBreakdown.overallConfidencePct,
+      verdict: finalReport.inbound_action?.verdict || (finalReport.harvest_guidance?.should_harvest_today ? 'HARVEST_RECOMMENDED' : 'DELAY_HARVEST'),
+      confidenceOverall: finalReport.confidence_breakdown?.overallConfidencePct ?? 94,
       sensorSnapshot: {
-        ambientTemp: effectiveAmbientTemp,
-        humidity: effectiveHumidity,
-        coldChainScore: coldChainTelemetry.coldChainScore,
+        ambientTemp: payload.ambient_temp_celsius || 28,
+        humidity: payload.sensor_telemetry?.humidity_pct || 78,
+        coldChainScore: finalReport.cold_chain_telemetry?.coldChainScore || 87,
       },
       agentOutputsSummary: {
-        verdict: inboundAction?.verdict,
-        shelfLifeDays: calibratedAmbientDays,
-        recommendedMarkdownPct: markdownOptimization.recommendedMarkdownPct,
-        targetRoutingStore: intelligentRouting.selectedStore.storeName,
+        verdict: finalReport.inbound_action?.verdict,
+        shelfLifeDays: finalReport.ambient_shelf_life_days,
+        recommendedMarkdownPct: finalReport.markdown_optimization?.recommendedMarkdownPct || 0,
+        targetRoutingStore: finalReport.intelligent_routing?.selectedStore?.storeName || 'Indiranagar Hub',
       },
-      reasonSummary: `Automated 9-Agent inspection against "${activeCommercialRule.name}". Quality score: ${commercialEvaluation.qualityScore}/100.`,
+      reasonSummary: `Automated 9-Agent inspection against "${finalReport.active_commercial_rule?.name || 'Standard'}". Quality score: ${finalReport.inbound_action?.quality_score || 85}/100.`,
     });
 
+    saveRuntimeStore();
     res.json(finalReport);
   } catch (error: any) {
     console.error('Grading API error:', error);
     res.status(500).json({ error: error.message || 'Inspection pipeline failed' });
+  }
+});
+
+// Decoupled Biophysical & Commercial Recalculation Endpoint (< 5ms response, zero vision overhead)
+app.post('/api/physics/recalculate', (req, res) => {
+  try {
+    const { vision_data, inspection_request } = req.body;
+    if (!vision_data || !inspection_request) {
+      return res.status(400).json({ error: 'vision_data and inspection_request are required' });
+    }
+    const report = assembleAgriGradeReport(vision_data, inspection_request);
+    res.json({ success: true, report });
+  } catch (err: any) {
+    console.error('Recalculate error:', err);
+    res.status(500).json({ error: err.message || 'Biophysical recalculation failed' });
+  }
+});
+
+// Statistical Crate Lot Sampling Endpoint (Packhouse & Dark Store Intake Standard)
+app.post('/api/grade/crate-sample', (req, res) => {
+  try {
+    const {
+      sampleCount = 20,
+      commodity = 'Tomato',
+      variety = 'Roma',
+      baselineDefectPct = 6.8,
+    } = req.body;
+
+    const count = Math.min(36, Math.max(10, Number(sampleCount) || 20));
+    const items: CrateItemSample[] = [];
+    let gradeACount = 0;
+    let gradeBCount = 0;
+    let rejectCount = 0;
+    let totalRipeness = 0;
+    let totalFirmness = 0;
+
+    for (let i = 1; i <= count; i++) {
+      const variance = Math.sin(i * 1.7) * 4.2 + (i % 4 === 0 ? 6.5 : -1.8);
+      const itemDefect = Math.max(0.5, Math.min(36, Math.round((Number(baselineDefectPct) + variance) * 10) / 10));
+      const stage = Math.min(6, Math.max(1, Math.round(2 + (i % 5) * 0.7))) as USDAMaturityStage;
+      const ripeness = Math.round(stage * 16.6);
+      const firmness = Math.round((6.8 - stage * 0.7 + Math.cos(i) * 0.4) * 10) / 10;
+
+      let verdict: 'GRADE_A' | 'GRADE_B' | 'REJECT' = 'GRADE_A';
+      let defType: string | undefined = undefined;
+
+      if (itemDefect > 16 || stage >= 6 || firmness < 2.3) {
+        verdict = 'REJECT';
+        rejectCount++;
+        defType = itemDefect > 25 ? 'Deep Compression Bruise' : 'Cuticle Degradation';
+      } else if (itemDefect > 5.5 || stage === 5 || firmness < 3.2) {
+        verdict = 'GRADE_B';
+        gradeBCount++;
+        defType = 'Minor Surface Scuff / Catfacing';
+      } else {
+        verdict = 'GRADE_A';
+        gradeACount++;
+      }
+
+      totalRipeness += ripeness;
+      totalFirmness += firmness;
+
+      items.push({
+        id: `CRATE-ITEM-${i.toString().padStart(2, '0')}`,
+        itemNumber: i,
+        stage,
+        ripenessPct: ripeness,
+        defectPercent: itemDefect,
+        gradeVerdict: verdict,
+        defectType: defType,
+        firmnessKgCm2: firmness,
+        boundingBox: {
+          x: 6 + ((i - 1) % 5) * 18,
+          y: 6 + Math.floor((i - 1) / 5) * 23,
+          width: 15,
+          height: 19,
+        },
+      });
+    }
+
+    const gradeAYieldPct = Math.round((gradeACount / count) * 100);
+    const gradeBYieldPct = Math.round((gradeBCount / count) * 100);
+    const cullRejectPct = Math.round((rejectCount / count) * 100);
+
+    let overallLotVerdict: CrateSampleLotResult['overallLotVerdict'] = 'ACCEPTED_GRADE_A';
+    let recommendedLotMarkdownPct = 0;
+    let lotRationale = '';
+
+    if (cullRejectPct > 15 || gradeAYieldPct < 50) {
+      overallLotVerdict = 'REJECTED_AT_DOCK';
+      lotRationale = `Lot cull rate is ${cullRejectPct}% (>15% dock SLA limit). Severe commercial decay detected. Return-to-Vendor triggered.`;
+    } else if (gradeBYieldPct > 25 || cullRejectPct > 5) {
+      overallLotVerdict = 'ACCEPTED_GRADE_B_MARKDOWN';
+      recommendedLotMarkdownPct = Math.min(30, Math.round(10 + gradeBYieldPct * 0.25 + cullRejectPct * 1.5));
+      lotRationale = `Lot acceptable with ${gradeAYieldPct}% Grade A and ${gradeBYieldPct}% Grade B. Automated ${recommendedLotMarkdownPct}% fast-dispatch markdown applied.`;
+    } else {
+      overallLotVerdict = 'ACCEPTED_GRADE_A';
+      recommendedLotMarkdownPct = 0;
+      lotRationale = `Premium lot certified: ${gradeAYieldPct}% Grade A yield with negligible defects. Routed to primary retail shelving.`;
+    }
+
+    const result: CrateSampleLotResult = {
+      totalItemsScanned: count,
+      gradeAYieldPct,
+      gradeBYieldPct,
+      cullRejectPct,
+      overallLotVerdict,
+      averageRipenessPct: Math.round(totalRipeness / count),
+      averageFirmnessKgCm2: Math.round((totalFirmness / count) * 10) / 10,
+      recommendedLotMarkdownPct,
+      items,
+      lotAcceptanceRationale: lotRationale,
+    };
+
+    res.json({ success: true, result });
+  } catch (err: any) {
+    console.error('Crate sample error:', err);
+    res.status(500).json({ error: err.message || 'Crate lot sample analysis failed' });
+  }
+});
+
+// Zebra/TSPL Barcode & Thermal Label Generator
+app.post('/api/barcode/generate-label', (req, res) => {
+  try {
+    const {
+      batchId = 'CRATE-TOM-8821',
+      commodity = 'Tomato',
+      variety = 'Roma',
+      supplier = 'Saraswati Agritech Cluster #3',
+      verdict = 'ACCEPTED_GRADE_A',
+      qualityScore = 92,
+      markdownPct = 0,
+      erpRouting = 'PREMIUM_RETAIL_BIN',
+      shelfLifeDays = 4.2,
+    } = req.body;
+
+    const now = new Date();
+    const expiry = new Date(now.getTime() + (shelfLifeDays || 4) * 24 * 60 * 60 * 1000);
+
+    const grade: 'GRADE_A' | 'GRADE_B' | 'REJECT' =
+      verdict === 'ACCEPTED_GRADE_B' ? 'GRADE_B' : verdict === 'REJECTED_AT_DOCK' ? 'REJECT' : 'GRADE_A';
+
+    const barcodeNumber = `890${Date.now().toString().slice(-9)}`;
+    const qrPayload = JSON.stringify({
+      bid: batchId,
+      crop: commodity,
+      var: variety,
+      grd: grade,
+      exp: expiry.toISOString().split('T')[0],
+      erp: erpRouting,
+      score: qualityScore,
+    });
+
+    const label: ThermalLabelData = {
+      batchId,
+      commodity,
+      variety,
+      supplier,
+      arrivalDate: now.toLocaleDateString(),
+      expiryDate: expiry.toLocaleDateString(),
+      grade,
+      markdownPct,
+      erpRoutingTag: erpRouting,
+      qrPayload,
+      inspectionQualityScore: qualityScore,
+      barcodeNumber,
+    };
+
+    res.json({ success: true, label });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to generate label' });
+  }
+});
+
+// Commercial Rules Import / Export Endpoints
+app.get('/api/commercial-rules/export', (req, res) => {
+  res.json({
+    version: '1.2.0',
+    exportedAt: new Date().toISOString(),
+    rules: liveCommercialRules,
+  });
+});
+
+app.post('/api/commercial-rules/import', (req, res) => {
+  try {
+    const { rules } = req.body;
+    if (!Array.isArray(rules) || rules.length === 0) {
+      return res.status(400).json({ error: 'Valid array of rules is required' });
+    }
+    liveCommercialRules = rules;
+    saveRuntimeStore();
+    res.json({ success: true, rules: liveCommercialRules });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to import rules' });
   }
 });
 

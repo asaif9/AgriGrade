@@ -705,7 +705,17 @@ export interface InspectionRequest {
   demand_inventory_context?: DemandAndInventoryContext;
 }
 
-export type AgentFocusType = 'swarm' | 'agent_1' | 'agent_2' | 'agent_3' | 'agent_4' | 'agent_5';
+export type AgentFocusType = 
+  | 'swarm' 
+  | 'agent_1' 
+  | 'agent_2' 
+  | 'agent_3' 
+  | 'agent_4' 
+  | 'agent_5' 
+  | 'agent_6' 
+  | 'agent_7' 
+  | 'agent_8' 
+  | 'agent_9';
 
 export interface ChatMetricItem {
   label: string;
@@ -808,4 +818,79 @@ export interface DigitalTwinCrateProfile {
   risks: DigitalTwinRisks;
   timeline: DigitalTwinTelemetryStep[];
 }
+
+// ==========================================
+// Enterprise Workspace & Role Navigation Types
+// ==========================================
+export type WorkspaceTab =
+  | 'INSPECTION'
+  | 'COMMAND_CENTER'
+  | 'RULES_ENGINE'
+  | 'SUPPLY_CHAIN'
+  | 'FEEDBACK_LEDGER'
+  | 'COMMODITY_DB'
+  | 'CHAT_SWARM';
+
+export type OperationalRole = 'FIELD_SCOUT' | 'DOCK_QC' | 'SUPPLY_CHAIN_LEAD';
+
+// ==========================================
+// Crate Lot Sampling Types (Dock Intake Standard)
+// ==========================================
+export interface CrateItemSample {
+  id: string;
+  itemNumber: number;
+  stage: USDAMaturityStage;
+  ripenessPct: number;
+  defectPercent: number;
+  gradeVerdict: 'GRADE_A' | 'GRADE_B' | 'REJECT';
+  defectType?: string;
+  firmnessKgCm2: number;
+  boundingBox?: { x: number; y: number; width: number; height: number };
+}
+
+export interface CrateSampleLotResult {
+  totalItemsScanned: number;
+  gradeAYieldPct: number;
+  gradeBYieldPct: number;
+  cullRejectPct: number;
+  overallLotVerdict: 'ACCEPTED_GRADE_A' | 'ACCEPTED_GRADE_B_MARKDOWN' | 'REJECTED_AT_DOCK';
+  averageRipenessPct: number;
+  averageFirmnessKgCm2: number;
+  recommendedLotMarkdownPct: number;
+  items: CrateItemSample[];
+  lotAcceptanceRationale: string;
+}
+
+// ==========================================
+// Physical Crate Barcode & Thermal Label Types
+// ==========================================
+export interface ThermalLabelData {
+  batchId: string;
+  commodity: string;
+  variety: string;
+  supplier: string;
+  arrivalDate: string;
+  expiryDate: string;
+  grade: 'GRADE_A' | 'GRADE_B' | 'REJECT';
+  markdownPct: number;
+  erpRoutingTag: string;
+  qrPayload: string;
+  inspectionQualityScore: number;
+  barcodeNumber: string;
+}
+
+// ==========================================
+// "What-If" Sensitivity & Logistics ROI Simulator
+// ==========================================
+export interface WhatIfSimulationResult {
+  scenarioName: string;
+  originalShelfLifeDays: number;
+  simulatedShelfLifeDays: number;
+  shelfLifeLossDays: number;
+  reeferCostInr: number;
+  preventedWastageSavingsInr: number;
+  netEconomicBenefitInr: number;
+  recommendation: string;
+}
+
 

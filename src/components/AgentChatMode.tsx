@@ -318,79 +318,127 @@ export const AgentChatMode: React.FC<AgentChatModeProps> = ({
       {/* Agent Focus Selector Tabs */}
       <div className="bg-stone-900/90 px-4 py-2 border-b border-stone-800 flex items-center justify-between gap-2 overflow-x-auto shrink-0">
         <div className="flex items-center gap-1.5 text-xs">
-          <span className="text-[10px] uppercase font-mono tracking-wider text-stone-400 font-semibold mr-1">
-            Agent Focus:
+          <span className="text-[10px] uppercase font-mono tracking-wider text-stone-400 font-semibold mr-1 shrink-0">
+            Agent Specialist:
           </span>
           <button
             onClick={() => setAgentFocus('swarm')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all ${
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all shrink-0 ${
               agentFocus === 'swarm'
                 ? 'bg-purple-600 text-white shadow-sm shadow-purple-950/60'
                 : 'bg-stone-950 text-stone-400 hover:text-stone-200 border border-stone-800'
             }`}
           >
             <Sparkles className="w-3 h-3 text-purple-300" />
-            <span>All Swarm Agents</span>
+            <span>Swarm Orchestrator</span>
           </button>
 
           <button
             onClick={() => setAgentFocus('agent_1')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all ${
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all shrink-0 ${
               agentFocus === 'agent_1'
                 ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-950/60'
                 : 'bg-stone-950 text-stone-400 hover:text-stone-200 border border-stone-800'
             }`}
           >
             <Sprout className="w-3 h-3 text-emerald-400" />
-            <span>Agent 1 (Maturity)</span>
+            <span>1. Vision & Variety</span>
           </button>
 
           <button
             onClick={() => setAgentFocus('agent_2')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all ${
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all shrink-0 ${
               agentFocus === 'agent_2'
                 ? 'bg-rose-600 text-white shadow-sm shadow-rose-950/60'
                 : 'bg-stone-950 text-stone-400 hover:text-stone-200 border border-stone-800'
             }`}
           >
             <AlertTriangle className="w-3 h-3 text-rose-400" />
-            <span>Agent 2 (Defects & Bruises)</span>
+            <span>2. Pathology & Defect</span>
           </button>
 
           <button
             onClick={() => setAgentFocus('agent_3')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all ${
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all shrink-0 ${
               agentFocus === 'agent_3'
                 ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/60'
                 : 'bg-stone-950 text-stone-400 hover:text-stone-200 border border-stone-800'
             }`}
           >
             <Thermometer className="w-3 h-3 text-cyan-400" />
-            <span>Agent 3 (Kinetic Decay)</span>
+            <span>3. Kinetic Bio-Decay</span>
           </button>
 
           <button
             onClick={() => setAgentFocus('agent_4')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all ${
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all shrink-0 ${
               agentFocus === 'agent_4'
                 ? 'bg-amber-600 text-white shadow-sm shadow-amber-950/60'
                 : 'bg-stone-950 text-stone-400 hover:text-stone-200 border border-stone-800'
             }`}
           >
             <Tag className="w-3 h-3 text-amber-400" />
-            <span>Agent 4 (Commercial Gate)</span>
+            <span>4. Rules Engine</span>
           </button>
 
           <button
             onClick={() => setAgentFocus('agent_5')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all ${
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all shrink-0 ${
               agentFocus === 'agent_5'
+                ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-950/60'
+                : 'bg-stone-950 text-stone-400 hover:text-stone-200 border border-stone-800'
+            }`}
+          >
+            <Layers className="w-3 h-3 text-indigo-400" />
+            <span>5. Demand Forecast</span>
+          </button>
+
+          <button
+            onClick={() => setAgentFocus('agent_6')}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all shrink-0 ${
+              agentFocus === 'agent_6'
+                ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-950/60'
+                : 'bg-stone-950 text-stone-400 hover:text-stone-200 border border-stone-800'
+            }`}
+          >
+            <Zap className="w-3 h-3 text-emerald-400" />
+            <span>6. Routing & Logistics</span>
+          </button>
+
+          <button
+            onClick={() => setAgentFocus('agent_7')}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all shrink-0 ${
+              agentFocus === 'agent_7'
+                ? 'bg-amber-500 text-white shadow-sm shadow-amber-950/60'
+                : 'bg-stone-950 text-stone-400 hover:text-stone-200 border border-stone-800'
+            }`}
+          >
+            <Tag className="w-3 h-3 text-amber-400" />
+            <span>7. Pricing & Markdown</span>
+          </button>
+
+          <button
+            onClick={() => setAgentFocus('agent_8')}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all shrink-0 ${
+              agentFocus === 'agent_8'
+                ? 'bg-rose-600 text-white shadow-sm shadow-rose-950/60'
+                : 'bg-stone-950 text-stone-400 hover:text-stone-200 border border-stone-800'
+            }`}
+          >
+            <ShieldCheck className="w-3 h-3 text-rose-400" />
+            <span>8. Root Cause & Risk</span>
+          </button>
+
+          <button
+            onClick={() => setAgentFocus('agent_9')}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all shrink-0 ${
+              agentFocus === 'agent_9'
                 ? 'bg-purple-600 text-white shadow-sm shadow-purple-950/60 ring-1 ring-purple-400/50'
                 : 'bg-stone-950 text-purple-400 hover:text-purple-200 border border-stone-800'
             }`}
           >
             <History className="w-3 h-3 text-purple-300" />
-            <span>Agent 5 (Historical Batch Intelligence)</span>
+            <span>9. Learning & Calibration</span>
           </button>
         </div>
       </div>

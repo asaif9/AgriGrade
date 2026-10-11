@@ -1,4 +1,4 @@
-# AgriGrade 2.0: Autonomous Multi-Agent Produce Quality, Commercial Grade Engine & Supply Chain Intelligence Platform
+# AgriGrade 2.1: Autonomous Multi-Agent Produce Quality, Commercial Grade Engine & Supply Chain Intelligence Platform
 
 [![Live Demo](https://img.shields.io/badge/Live%20App-Shared%20Deployment-2ecc71?style=for-the-badge&logo=google-cloud&logoColor=white)](https://ais-pre-ebfvukbs4t7ctkdytize6a-668885483768.asia-east1.run.app)
 [![Development URL](https://img.shields.io/badge/Dev%20Instance-Active%20Workspace-3498db?style=for-the-badge&logo=google-cloud&logoColor=white)](https://ais-dev-ebfvukbs4t7ctkdytize6a-668885483768.asia-east1.run.app)
@@ -9,9 +9,9 @@
 [![Vite](https://img.shields.io/badge/Vite-8.0-646cff.svg)](https://vitejs.dev/)
 [![License](https://img.shields.io/badge/License-Enterprise%20Proprietary-success.svg)](#license)
 
-**AgriGrade 2.0** is an enterprise-grade, closed-loop multi-agent AI computer-vision, dynamic commercial grade engine, agronomic commodity database, and kinetic shelf-life prediction platform. It is engineered to eliminate agricultural post-harvest food waste, optimize farm-to-fork dispatch logistics, enforce configurable buyer tolerances, automate quick-commerce dark store inbound quality gating, and continuously retrain models through ground truth retail feedback.
+**AgriGrade 2.1** is an enterprise-grade, closed-loop multi-agent AI computer-vision, dynamic commercial grade engine, agronomic commodity database, and kinetic shelf-life prediction platform. It is engineered to eliminate agricultural post-harvest food waste, optimize farm-to-fork dispatch logistics, enforce configurable buyer tolerances, automate quick-commerce dark store inbound quality gating, and continuously retrain models through ground truth retail feedback.
 
-Powered by Google's **Gemini 3.8 Flash** multimodal model alongside biological respiration kinetic engines, empirical commodity databases, IoT telemetry integration, and an autonomous **9-Agent Swarm**, AgriGrade bridges the critical gap between farm-gate harvest decisions and automated warehouse distribution.
+Powered by Google's **Gemini 3.8 Flash** multimodal model alongside biological respiration kinetic engines, empirical commodity databases, IoT telemetry integration, decoupled sub-5ms biophysical simulation, and an autonomous **9-Agent Swarm**, AgriGrade bridges the critical gap between farm-gate harvest decisions and automated warehouse distribution.
 
 ---
 
@@ -35,11 +35,14 @@ Powered by Google's **Gemini 3.8 Flash** multimodal model alongside biological r
   - [5. Configurable Commercial Grade Engine](#5-configurable-commercial-grade-engine)
   - [6. Demand-Aware Intelligent Routing & Dynamic Markdown Optimization](#6-demand-aware-intelligent-routing--dynamic-markdown-optimization)
 - [The 9-Agent Orchestrated Swarm](#-the-9-agent-orchestrated-swarm)
-- [Interactive Studios & Specialized Modules](#-interactive-studios--specialized-modules)
+- [Interactive Studios & Enterprise Modules](#-interactive-studios--specialized-modules)
   - [Field Pre-Harvest Decision Support](#1-field-pre-harvest-decision-support-field_pre_harvest)
   - [Dark Store Inbound Quality Gate](#2-dark-store-inbound-quality-gate-dark_store_inbound)
   - [AgriGrade Operations Command Center & Topology](#3-operations-command-center--supply-chain-topology)
   - [Dynamic Commercial Grade Engine Studio](#4-dynamic-commercial-grade-engine-studio)
+  - [Crate Lot Sampling & Statistical Yield Modal](#crate-lot-sampling--statistical-yield-modal)
+  - [Thermal Crate Barcode & Sticker Generator](#thermal-crate-barcode--sticker-generator)
+  - [Arrhenius "What-If" Sensitivity & Cold-Chain ROI Simulator](#arrhenius-what-if-sensitivity--cold-chain-roi-simulator)
   - [Dynamic Pricing & Markdown Studio](#5-dynamic-pricing--markdown-studio)
   - [Demand Forecasting & Intelligent Routing Studio](#6-demand-forecasting--intelligent-routing-studio)
   - [Deep Supplier Scorecard & Forensic Studio](#7-deep-supplier-scorecard--forensic-studio)
@@ -64,8 +67,13 @@ Powered by Google's **Gemini 3.8 Flash** multimodal model alongside biological r
 
 ## 🌟 Key Highlights & Capabilities
 
+- **Decoupled Biophysics Engine (<5ms Latency)**: Completely decouples heavy Gemini 3.8 Flash optical inference from real-time environmental slider manipulation. Recalculates shelf-life decay, Arrhenius respiration curves, and pricing markdowns in sub-5ms without re-uploading massive Base64 images (`/api/physics/recalculate`).
+- **Codex / USDA Crate Lot Sampling Mode**: Implements statistical multi-specimen lot yield grading (20-specimen sampling matrix), evaluating Grade A %, Grade B %, and cull reject % to output authoritative dock acceptance verdicts and dynamic lot markdown discounts.
+- **Zebra / TSPL Thermal Barcode Crate Labeling**: Instantaneous industrial sticker generation supporting 4"×3" crate labels and 2"×1" shelf tags, real-time Zebra TSPL code copy, Code 128 barcodes, high-density QR tags, and native printer dialogs.
+- **Arrhenius "What-If" Sensitivity & Cold-Chain ROI Simulator**: Financial and biophysical simulator that models ambient lorry vs. chilled reefer transit scenarios, thermal excursions, spoilage risk, and cargo salvage values to prove logistics ROI.
+- **Configurable Buyer Commercial Rules & JSON Import/Export**: Define, tune, export, and import commercial tolerance matrices (Zepto Quick-Commerce, Nature's Basket, Food Processing, Cold-Chain Export) with automatic persistence in `runtime_store.json`.
+- **Role-Based Workspace Topology**: Single-click role transitions (`Field Scout`, `Dock QC Inspector`, `Supply Chain Lead`) paired with clean workspace tab routing, eliminating confusing toggles and cluttered screens.
 - **Zero Post-Harvest Guesswork**: Eliminates static single-number assumptions (`Tomato = 18 days`) with multi-factor empirical derivations based on variety genetics, harvest maturity, transpiration deficit, and packaging permeability.
-- **Configurable Buyer Commercial Standards**: Allows procurement and QA teams to define custom acceptance rules per commodity and retail client (Grade A, Grade B, Grade C, Dock Rejection), with strict tolerances for firmness, Brix, maximum bruise percentage, fungal limits, and weight.
 - **Autonomous 9-Agent Multi-Agent Swarm**: Executes specialized computer vision, defect pathology, agronomic database resolution, Arrhenius kinetic modeling, commercial rule evaluation, markdown optimization, demand matching, and supplier forensic scoring.
 - **Dynamic Pricing & Salvage Recovery**: Calculates real-time shelf-life price elasticity curves to maximize revenue recovery on aging produce rather than suffering 100% write-offs.
 - **Multi-Store Velocity Routing**: Automatically directs batches to dark stores with high sales velocities, ensuring sell-through within the remaining biological shelf-life window.
@@ -310,91 +318,94 @@ Rather than suffering binary dock rejections (where rejected lots are dumped at 
 
 ---
 
-## 🧠 The 9-Agent Orchestrated Swarm
+## 🧠 The 9-Agent Orchestrated Swarm & Dynamic Skills Matrix
 
-AgriGrade executes nine specialized, cooperating agents coordinated by an orchestrator for every inspection and outcome cycle:
+AgriGrade executes nine specialized, cooperating agents coordinated by the **Swarm Orchestrator & Synthesis Supervisor** across an asynchronous parallel **Directed Acyclic Graph (DAG)**:
 
 ```
-                               ┌────────────────────────────────────────────────────────┐
-                               │               Multimodal Ingestion Pipeline            │
-                               │   Image Base64 + IoT Telemetry + Logistics + Weather   │
-                               └───────────────────────────┬────────────────────────────┘
-                                                           │
-                   ┌───────────────────────────────────────┴───────────────────────────────────────┐
-                   ▼                                                                               ▼
-     ┌───────────────────────────────┐                                               ┌───────────────────────────────┐
-     │ 1. Optical Phenotyping Lead   │                                               │ 2. Defect & Pathology Lead    │
-     ├───────────────────────────────┤                                               ├───────────────────────────────┤
-     │ • USDA 6-stage maturity scale │                                               │ • Mechanical bruise detection │
-     │ • Spectral pigment breakdown  │                                               │ • Pathological lesions & mold │
-     │ • Firmness penetrometer est.  │                                               │ • Cumulative defect index     │
-     │ • Optical morphological cues  │                                               │ • Micro-puncture localization │
-     └───────────────┬───────────────┘                                               └───────────────┬───────────────┘
-                     │                                                                               │
-                     ▼                                                                               ▼
-     ┌───────────────────────────────┐                                               ┌───────────────────────────────┐
-     │ 3. Commodity & Agronomy Agent │                                               │ 4. Kinetic Respiration Agent  │
-     ├───────────────────────────────┤                                               ├───────────────────────────────┤
-     │ • Variety genetics resolution │                                               │ • Arrhenius Q10 decay curves  │
-     │ • Maturity life multiplier    │                                               │ • Ethylene ppm acceleration   │
-     │ • Packaging transpiration VPD │                                               │ • Vibration shock fatigue     │
-     │ • Supplier cohort benchmark   │                                               │ • Degree-hours thermal penalty│
-     └───────────────┬───────────────┘                                               └───────────────┬───────────────┘
-                     │                                                                               │
-                     └───────────────────────────────┬───────────────────────────────────────────────┘
-                                                     │
-                                                     ▼
-                                 ┌───────────────────────────────────────┐
-                                 │ 5. Commercial Gatekeeper & Decision   │
-                                 ├───────────────────────────────────────┤
-                                 │ • Primary intake verdict synthesis    │
-                                 │ • Confidence breakdown aggregation    │
-                                 │ • Dock admission disposition          │
-                                 └───────────────────┬───────────────────┘
-                                                     │
-                     ┌───────────────────────────────┼───────────────────────────────┐
-                     ▼                               ▼                               ▼
-       ┌───────────────────────────┐   ┌───────────────────────────┐   ┌───────────────────────────┐
-       │ 6. Dynamic Grade Engine   │   │ 7. Markdown & Pricing     │   │ 8. Demand Velocity Router │
-       ├───────────────────────────┤   ├───────────────────────────┤   ├───────────────────────────┤
-       │ • Buyer tolerance rules   │   │ • Shelf-life elasticity   │   │ • Multi-store SKU velocity│
-       │ • Grade A/B/C/Reject tag  │   │ • Salvage recovery model  │   │ • Transit safety buffer   │
-       │ • Brix & Firmness check   │   │ • Markdown tier (0%-40%)  │   │ • Automated WMS dispatch  │
-       └─────────────┬─────────────┘   └─────────────┬─────────────┘   └─────────────┬─────────────┘
-                     │                               │                               │
-                     └───────────────────────────────┼───────────────────────────────┘
-                                                     │
-                                                     ▼
-                                 ┌───────────────────────────────────────┐
-                                 │ 9. Supplier Forensic Intelligence     │
-                                 ├───────────────────────────────────────┤
-                                 │ • Defect trajectory vs. 5% SLA        │
-                                 │ • Cold-chain SLA breach attribution   │
-                                 │ • Dynamic supplier trust score (0-100)│
-                                 │ • Autonomous root cause analysis      │
-                                 └───────────────────┬───────────────────┘
-                                                     │
-                                                     ▼
-                                 ┌───────────────────────────────────────┐
-                                 │  Continual Ground Truth Calibrator    │
-                                 ├───────────────────────────────────────┤
-                                 │ • Compares prediction vs actual out.  │
-                                 │ • Tunes biological Q10 thermal offset │
-                                 │ • Updates defect penalty weights      │
-                                 │ • Calibrates price elasticity factor  │
-                                 └───────────────────────────────────────┘
+                  [0. Swarm Orchestrator & Supervisor]
+                                   │
+              ┌────────────────────┼────────────────────┐      ◄── Phase 1: Parallel Perception & Biophysics
+              ↓                    ↓                    ↓
+    [1. Vision & Variety] [2. Pathology 360°] [3. Kinetic Twin]
+              │                    │                    │
+              └────────────────────┼────────────────────┘      ◄── Barrier Sync: Consistency Verification
+                                   ↓
+             [4. Commercial Decision & Rules Engine]
+                                   │
+              ┌────────────────────┼────────────────────┐      ◄── Phase 2: Downstream Optimization Solvers
+              ↓                    ↓                    ↓
+     [5. Demand Forecast] [6. Routing Optimizer] [7. Pricing Markdown]
+              │                    │                    │
+              └────────────────────┼────────────────────┘
+                                   ↓
+             [8. Autonomous Risk & Root Cause Diagnostic]
+                                   ↓
+                   Final Verified Action (ERP / WMS)
+                                   ↓ (Actual Store Sales & Scrap Audits)
+             [9. Closed-Loop Model Calibration & Learning]
 ```
 
-1. **Optical Phenotyping Lead**: Classifies commodity type, variety traits, and USDA 6-stage maturity index (Green, Breaker, Turning, Pink, Light Red, Red) with 4-channel spectral pigment breakdown.
-2. **Defect & Pathology Lead**: Segments mechanical bruises, skin ruptures, catfacing, blossom-end rot, and fungal lesions, calculating the cumulative bruise defect index.
-3. **Commodity & Agronomy Database Agent**: Queries the relational agronomic database to match variety genetics, harvest maturity life multipliers, transpiration deficit, and supplier historical cohorts.
-4. **Kinetic Respiration Agent**: Simulates Arrhenius $Q_{10}$ metabolic respiration, computing degree-hours thermal exposure ($TES$), cold-chain score ($CCS$), and net biological shelf-life deductions.
-5. **Commercial Gatekeeper & Decision Lead**: Synthesizes multi-agent findings into clear actionable directives: Field Pre-Harvest pass/hold or Receiving Dock Grade A/B/C/Reject.
-6. **Dynamic Commercial Grade Engine Agent**: Applies active configurable buyer commercial tolerance rules, verifying Brix, firmness, and defect boundaries.
-7. **Dynamic Pricing & Revenue Optimization Agent**: Calculates shelf-life price elasticity, salvage recovery curves, and recommended markdown tiers (0% to 40%).
-8. **Demand Velocity & Multi-Store Routing Agent**: Analyzes dark store network turnover speeds and assigns batches to stores that guarantee complete sell-through before degradation.
-9. **Supplier Forensic Intelligence Agent**: Cross-references cold-chain logger data and defect profiles against historical vendor SLAs, generating root cause diagnoses and adjusting dynamic supplier trust scores.
-10. **Continual Ground Truth Calibrator**: Ingests downstream sales, waste audits, and customer refunds to calibrate system weights online.
+### The 9 Specialized Agents & Dynamic Skills Catalog:
+
+1. **Agent 1: Optical Perception & Phenotyping Agent**
+   - **Domain**: Computer Vision, Colorimetry & Botanical Phenotyping
+   - **Active Skills**: `optical_usda_ripeness_classifier` (USDA 1–6 color stages), `variety_genetic_classifier` (aspect ratio & pericarp morphology), `image_quality_gatekeeper` (Laplacian variance >= 70, lux checks).
+   - **Expansion Skills**: `geometric_caliper_dimensioner` (fiducial millimeter diameter & mass estimation), `spectral_chlorophyll_decomposition` (CIE $L^*a^*b^*$ color index & lycopene accumulation velocity), `dock_cct_lux_normalizer` (Kelvin temperature white-balance correction).
+   - **Self-Healing**: Automatic glare subtraction, motion blur re-capture prompt, optical certainty bounds.
+
+2. **Agent 2: Defect & Pathology Segmentation Agent**
+   - **Domain**: Phytopathology, Cuticle Surface Integrity & 360° Multi-Angle Fusion
+   - **Active Skills**: `surface_defect_segmenter` (precise anomaly area in cm² vs visible cuticle), `multi_angle_360_fusion` (spherical projection fusing 5 camera angles without double-counting).
+   - **Expansion Skills**: `etiological_pathogen_classifier` (mechanical vs physiological vs biological rot), `contagion_spread_evaluator` (fungal sporulation quarantine trigger), `bruise_volumetric_depth_estimator` (subcutaneous pulp collapse depth).
+   - **Self-Healing**: Occlusion-adjusted visible denominator, stem-scar detachment zone exclusion.
+
+3. **Agent 3: Kinetic Bio-Decay Digital Twin Agent**
+   - **Domain**: Post-Harvest Plant Physiology & Arrhenius Thermodynamic Kinetics
+   - **Active Skills**: `arrhenius_q10_respiration_solver` (Arrhenius $Q_{10}$ bio-decay curve), `cold_chain_degree_hour_integrator` (144-point thermal exposure integral & degree-hour penalty).
+   - **Expansion Skills**: `transpiration_vpd_mass_loss_solver` (Vapor Pressure Deficit weight shrinkage), `ethylene_climacteric_catalyst_model` (System-2 autocatalytic $C_2H_4$ ripening burst), `chilling_injury_risk_detector` (subtropical chilling mealiness warning).
+   - **Self-Healing**: Fallback to regional seasonal climatic temperature if IoT datalogger is offline.
+
+4. **Agent 4: Commercial Decision & Rules Engine Agent**
+   - **Domain**: Contractual QC Specifications & ERP Gatekeeping
+   - **Active Skills**: `clause_by_clause_rule_evaluator` (evaluates multi-parameter buyer specifications), `erp_routing_tag_generator` (automated WMS disposition tags: `PREMIUM_RETAIL_BIN`, `FAST_DISPATCH_DISCOUNT_X`, `RETURN_TO_VENDOR`).
+   - **Expansion Skills**: `multi_buyer_arbitrage_matcher` (secondary market salvage diversion to foodservice/processors), `adaptive_market_tolerance_buffer` (monsoon scarcity tolerance relaxation), `contractual_clause_provenance_audit` (cryptographic SLA proof).
+   - **Self-Healing**: Default benchmark rule fallback if buyer ID is unconfigured.
+
+5. **Agent 5: Demand Forecasting & Waste Prevention Agent**
+   - **Domain**: Inventory Velocity Nowcasting & Waste Hazard Modeling
+   - **Active Skills**: `store_sell_through_estimator` (combines inventory kg, sales velocity, and shelf life to forecast unsold kg and waste probability %).
+   - **Expansion Skills**: `hyperlocal_weather_demand_nowcaster` (rain radar demand surge multiplier), `fefo_picking_queue_prioritizer` (First-Expired, First-Out picking queue), `inter_store_rebalancing_optimizer` (nearby dark store stock transfer ROI).
+   - **Self-Healing**: Peer cluster median velocity inheritance for brand-new dark stores.
+
+6. **Agent 6: Intelligent Routing & Logistics Agent**
+   - **Domain**: Micro-Fulfillment Operations Research & Network Routing
+   - **Active Skills**: `multi_store_margin_optimizer` (evaluates destination dark stores by velocity, transit time, and net realized revenue).
+   - **Expansion Skills**: `dynamic_traffic_thermal_delay_solver` (simulates metropolitan traffic heat degradation), `cross_dock_consolidation_planner` (consolidated multi-stop delivery runs), `dark_store_capacity_gate` (live cold-room cubic volume check).
+   - **Self-Healing**: Central cold storage holding divert if candidate store bins are saturated.
+
+7. **Agent 7: Dynamic Pricing & Markdown Optimizer Agent**
+   - **Domain**: Algorithmic Pricing & Revenue Optimization
+   - **Active Skills**: `eight_variable_markdown_solver` (computes optimal discount balancing shelf life, inventory, velocity, competitor price, peak hours, and grade).
+   - **Expansion Skills**: `price_elasticity_curve_solver` (commodity-specific price elasticity demand lift), `contribution_margin_floor_guard` (anti-predatory cost floor check), `phased_time_decay_markdown` (staged markdown schedule).
+   - **Self-Healing**: Catalog baseline reference price fallback if competitor scraping API is unreachable.
+
+8. **Agent 8: Autonomous Risk & Root Cause Diagnostic Agent**
+   - **Domain**: Supply Chain Forensics & Vendor Performance Analytics
+   - **Active Skills**: `multi_factor_root_cause_synthesizer` (correlates defect patterns with vibration G-force, temperature spikes, and weather), `predictive_supplier_risk_modeler` (Bayesian supplier reliability scorecard).
+   - **Expansion Skills**: `automated_debit_note_generator` (automated ERP debit claims and penalty drafting), `alternative_supplier_rebalancer` (vetted alternative vendor recommendation for high-risk accounts).
+   - **Self-Healing**: Provisional monitoring score for newly onboarded suppliers.
+
+9. **Agent 9: Closed-Loop Model Calibration & Learning Agent**
+   - **Domain**: Continual Machine Learning & Statistical Calibration
+   - **Active Skills**: `closed_loop_feedback_calibrator` (computes prediction error residuals, updates MAE, and tunes learned decay offsets per cohort).
+   - **Expansion Skills**: `seasonality_concept_drift_detector` (Population Stability Index monitoring across weather seasons), `active_learning_uncertainty_sampler` (uncertainty-based agronomist labeling sampling).
+   - **Self-Healing**: Outlier decay suppression; enforces minimum 30 verified batch outcomes before altering genetic variety constants.
+
+10. **Swarm Orchestrator & Synthesis Supervisor**
+    - **Domain**: Directed Acyclic Graph (DAG) Execution & Multi-Objective Consensus
+    - **Active Skills**: `directed_acyclic_graph_scheduler` (asynchronous parallel task dispatcher), `zero_hallucination_cross_verifier` (numerical consistency guard across agent boundaries).
+    - **Expansion Skills**: `multi_objective_pareto_arbiter` (resolves objective conflicts between routing, pricing, and shelf life), `autonomous_circuit_breaker_healer` (sub-second deterministic fallback if any sub-agent latency exceeds 1500ms).
 
 ---
 
@@ -425,8 +436,24 @@ AgriGrade provides 15 dedicated operational studios, consoles, and workflows:
 ### 4. Dynamic Commercial Grade Engine Studio
 - Complete rule creation and editing interface for customer-specific tolerances.
 - Sliders and thresholds for Min Firmness, Min Brix, Max Bruise %, Max Fungal %, Max Skin Ruptures %, Max Maturity Stage, and Weight bounds.
-- One-click rule switching (e.g. `Zepto Ultra-Fresh Express Grade A`, `Standard Supermarket Inbound`, `Food Service Sauce Processing`).
-- Real-time rule evaluation tester and JSON import/export.
+- One-click rule switching (`Zepto Quick-Commerce`, `Nature's Basket Premium`, `Food Processing Sauce`, `Export Cold-Chain Grade A`).
+- Real-time rule evaluation tester, multi-client simultaneous benchmark, and full JSON file export & import capabilities with server-side synchronization (`/api/commercial-rules/export`, `/api/commercial-rules/import`).
+
+### Crate Lot Sampling & Statistical Yield Modal
+- **Codex Alimentarius & USDA Statistical Sampling**: Allows packhouse and dark store inspectors to perform multi-item crate sampling audits (20-specimen statistical sampling matrix).
+- **Yield Calculation Matrix**: Measures exact percentages of Grade A yield, Grade B yield, and Cull/Reject %, displaying individual specimen maturity stages, penetrometer firmness, and defect types.
+- **Automated Lot Verdict & Markdown Decision**: Recommends overall crate acceptance (`ACCEPTED_GRADE_A`, `ACCEPTED_GRADE_B_MARKDOWN`, `REJECTED_AT_DOCK`) and calculates optimal dynamic lot discount percentages to maximize sell-through without quality disputes.
+
+### Thermal Crate Barcode & Sticker Generator
+- **Zebra TSPL Industrial Command Generator**: Outputs raw TSPL thermal printer scripts ready for direct serial/network dispatch to industrial Zebra label printers.
+- **Multi-Format Support**: Dual layout switcher supporting 4"×3" large produce crate intake stickers and 2"×1" retail shelf tags.
+- **Machine-Readable Tagging**: Renders dynamic Code 128 barcodes with batch checksums and high-density 2D QR tags encoding batch ID, quality grade, expiry timestamp, and ERP routing tags.
+- **Native Print & Copy Integration**: One-click clipboard copy for TSPL commands and direct browser print triggering with thermal CSS optimization.
+
+### Arrhenius "What-If" Sensitivity & Cold-Chain ROI Simulator
+- **Thermal Excursion Modeling**: Interactive multi-variable simulator evaluating the biological impact of ambient road transit temperatures (15°C – 45°C) and unrefrigerated excursion durations (0 – 12 hours).
+- **Reefer vs. Ambient Economics**: Demonstrates real-time financial ROI of booking chilled reefer freight vs. ambient lorries, factoring in cargo volume, base produce price per kg, reefer rental premiums, and salvage recovery.
+- **Shelf-Life Preserved**: Dynamically computes biological shelf-life days saved through active cold-chain compliance and net profit/loss differential.
 
 ### 5. Dynamic Pricing & Markdown Studio
 - Visual price elasticity and salvage recovery curves.
@@ -643,10 +670,12 @@ AgriGrade-Root/
 │   │   ├── MultiFactorContextPanel.tsx   # Interactive Environmental Context Sliders
 │   │   ├── InspectionView.tsx            # Primary Optical Scan & Defect Bounding Boxes
 │   │   ├── CameraModal.tsx               # Live Video Feed & Barcode/QR Scanner
-│   │   └── MultiAgentModal.tsx           # 9-Agent Trace Inspector Modal
+│   │   └── MultiAgentModal.tsx           # Interactive 5-Tab Swarm Blueprint & Dynamic Skills Studio
 │   ├── db/
 │   │   └── commodityDatabase.ts          # Relational Agronomic Commodity Taxonomy & Baselines
 │   ├── data/
+│   │   ├── agentSkillsMatrix.ts          # Comprehensive 9-Agent Skills, Instructions & DAG Matrix
+│   │   ├── presets.ts                    # Preset Specimen Profiles (Roma, Cavendish, Gala, Pepper)
 │   │   ├── agriGradeDataPlatform.ts      # Supply Chain Nodes, Connections & Fleet KPIs
 │   │   └── feedbackLoopData.ts           # Historical Batches & Continuous Calibration State
 │   └── utils/
@@ -776,6 +805,21 @@ Executes the full 9-Agent inspection pipeline on base64 optical imagery with mul
   ```
 - **Response**: Full `AgriGradeReport` containing maturity breakdown, defect index, firmness estimate, dynamic database prediction, 9-agent traces, commercial evaluation, markdown recommendation, intelligent routing, and supplier scorecard.
 
+#### `POST /api/physics/recalculate`
+Lightning-fast (<5ms) biophysical recalculation endpoint. Recalculates shelf-life decay, Arrhenius respiration, dynamic markdowns, and commercial actions when environmental sliders (temperature, transit hours, distance, cold-chain telemetry) change without re-uploading massive Base64 images.
+- **Request Body**: `{ vision_data: GeminiReport, inspection_request: InspectionRequest }`
+- **Response**: `{ success: true, latency_ms: number, report: AgriGradeReport }`
+
+#### `POST /api/grade/crate-sample`
+Simulates and evaluates statistical Codex / USDA multi-specimen crate lot samples (20 specimens per lot).
+- **Request Body**: `{ sampleCount: number, commodity: string, baselineDefectPct: number }`
+- **Response**: `{ success: true, result: CrateSampleLotResult }` containing Grade A %, Grade B %, cull reject %, individual specimen maturity and firmness, and lot acceptance recommendation.
+
+#### `POST /api/barcode/generate-label`
+Generates formatted Zebra TSPL printer instructions, Code 128 barcode payloads, and QR content for physical crate labels and shelf tags.
+- **Request Body**: `{ batchId: string, commodity: string, variety: string, supplierName: string, gradeVerdict: string, ... }`
+- **Response**: `{ success: true, label: ThermalLabelData }`
+
 ---
 
 ### Commercial Grade Engine
@@ -784,11 +828,17 @@ Executes the full 9-Agent inspection pipeline on base64 optical imagery with mul
 Returns all active and available commercial buyer tolerance rules.
 
 #### `POST /api/commercial-rules`
-Creates or updates a commercial grade rule.
+Creates or updates a commercial grade rule, persisting it to `runtime_store.json`.
 - **Request Body**: `CommercialGradeRule` object (firmness, Brix, defect limits, actions).
 
 #### `POST /api/commercial-rules/evaluate`
 Evaluates a specific set of physical batch metrics against a rule.
+
+#### `GET /api/commercial-rules/export`
+Exports all active commercial buyer tolerance rules formatted as downloadable JSON.
+
+#### `POST /api/commercial-rules/import`
+Imports and validates an array or object of commercial rules, merging them into active memory and persisting to `runtime_store.json`.
 
 ---
 
